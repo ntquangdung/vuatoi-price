@@ -2,6 +2,8 @@ import {
   collection,
   query,
   where,
+  orderBy,
+  limit,
   onSnapshot,
   doc,
   addDoc,
@@ -67,3 +69,19 @@ export const saveAdmin = (email, active) =>
 export const toggleAdmin = (a) =>
   updateDoc(doc(db, "admins", a.id), { active: !a.active });
 export const removeAdmin = (id) => deleteDoc(doc(db, "admins", id));
+export const saveCalculation = (data, email) =>
+  addDoc(collection(db, "calculations"), {
+    ...data,
+    savedBy: normalizeEmail(email),
+    createdAt: serverTimestamp(),
+  });
+export const watchCalculations = (next, error) =>
+  onSnapshot(
+    query(
+      collection(db, "calculations"),
+      orderBy("createdAt", "desc"),
+      limit(100),
+    ),
+    (snapshot) => next(snapshot.docs.map((d) => ({ ...d.data(), id: d.id }))),
+    error,
+  );

@@ -20,3 +20,16 @@ export const dealerSectionTotal = (items, products) =>
     )?.dealerPrice;
     return Number.isFinite(dealerPrice) ? sum + dealerPrice * quantity : null;
   }, 0);
+export const discountAmount = (total, type, value) => {
+  const amount = Number(value);
+  if (
+    !Number.isFinite(total) ||
+    total <= 0 ||
+    !Number.isFinite(amount) ||
+    amount <= 0
+  )
+    return 0;
+  const discount =
+    type === "percent" ? (total * Math.min(amount, 100)) / 100 : amount;
+  return Math.min(total, Math.round(discount));
+};

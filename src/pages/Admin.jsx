@@ -17,6 +17,7 @@ import {
 import { formatMoney } from "../utils/currency";
 import useOnline from "../hooks/useOnline";
 import Icon from "../components/Icon";
+import HistoryPanel from "../components/HistoryPanel";
 const blank = {
   name: "",
   unit: "kg",
@@ -185,9 +186,12 @@ function Dashboard({ user }) {
     [edit, setEdit] = useState(null),
     [email, setEmail] = useState(""),
     [emailActive, setEmailActive] = useState(true);
-  const tab = useLocation().pathname.endsWith("/admins")
+  const pathname = useLocation().pathname;
+  const tab = pathname.endsWith("/admins")
     ? "admins"
-    : "products";
+    : pathname.endsWith("/history")
+      ? "history"
+      : "products";
   useEffect(() => {
     const fail = () => {
       setDataError(
@@ -307,6 +311,14 @@ function Dashboard({ user }) {
         >
           <Icon name="users" />
           Gmail quản lý<span className="tab-count">{admins.length}</span>
+        </Link>
+        <Link
+          className={tab === "history" ? "selected" : ""}
+          to="/admin/history"
+          aria-current={tab === "history" ? "page" : undefined}
+        >
+          <Icon name="calculator" />
+          Lịch sử tính giá
         </Link>
       </nav>
       {error && (
@@ -523,6 +535,8 @@ function Dashboard({ user }) {
             </p>
           </div>
         </div>
+      ) : tab === "history" ? (
+        <HistoryPanel />
       ) : (
         <div className="admin-layout">
           <form

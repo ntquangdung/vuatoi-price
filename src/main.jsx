@@ -18,20 +18,7 @@ function App() {
       <header>
         <Link className="brand" to="/">
           <span className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 40 40" fill="none">
-              <path
-                d="M21 6c-3 3-2 6-1 9M20 14c-5-4-14 4-13 12 1 7 7 9 13 9s12-2 13-9c1-8-8-16-13-12Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M20 14c-4 6-6 13-2 20M20 14c4 6 6 13 2 20"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
+            <img src="/vua-toi-logo.png" alt="" />
           </span>
           <span className="brand-name">
             VUA TỎI <small>BẢNG TÍNH GIÁ</small>

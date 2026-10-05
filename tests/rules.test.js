@@ -168,3 +168,50 @@ test("Unverified or password accounts cannot become admin", async () => {
     await assertFails(getDocs(collection(db, "admins")));
   }
 });
+test("Signed-in users may save calculations, while only Admin can read history", async () => {
+  const publicDb = env.unauthenticatedContext().firestore();
+  const viewerDb = env
+    .authenticatedContext("viewer", token("viewer@gmail.com"))
+    .firestore();
+  const adminDb = env
+    .authenticatedContext("owner", token("owner@gmail.com"))
+    .firestore();
+  const entry = {
+    sections: [
+      {
+        name: "Mục 1",
+        items: [
+          {
+            name: "Tỏi",
+            unit: "kg",
+            price: 250000,
+            dealerPrice: 200000,
+            quantity: 2,
+          },
+        ],
+      },
+    ],
+    lineCount: 1,
+    retailSubtotal: 500000,
+    discountType: "percent",
+    discountValue: 10,
+    discountAmount: 50000,
+    total: 450000,
+    dealerTotal: 400000,
+    savedBy: "viewer@gmail.com",
+    createdAt: serverTimestamp(),
+  };
+  await assertFails(setDoc(doc(publicDb, "calculations", "anonymous"), entry));
+  await assertSucceeds(setDoc(doc(viewerDb, "calculations", "saved"), entry));
+  await assertFails(getDoc(doc(viewerDb, "calculations", "saved")));
+  await assertSucceeds(getDoc(doc(adminDb, "calculations", "saved")));
+  await assertFails(
+    setDoc(doc(viewerDb, "calculations", "spoofed"), {
+      ...entry,
+      savedBy: "owner@gmail.com",
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(viewerDb, "calculations", "saved"), { total: 0 }),
+  );
+});

@@ -5,12 +5,21 @@ import {
   quantityValue,
   sectionTotal,
   dealerSectionTotal,
+  discountAmount,
 } from "../src/utils/currency.js";
 test("Vietnamese currency and numeric quantity validation", () => {
   assert.equal(formatMoney(1250000), "1.250.000đ");
   assert.equal(quantityValue(-2), 0);
   assert.equal(quantityValue("bad"), 0);
   assert.equal(quantityValue("0.5"), 0.5);
+});
+test("Discount applies to retail totals in percent or fixed amount without exceeding the total", () => {
+  assert.equal(discountAmount(950000, "percent", 10), 95000);
+  assert.equal(discountAmount(950000, "amount", 100000), 100000);
+  assert.equal(discountAmount(950000, "percent", 150), 950000);
+  assert.equal(discountAmount(950000, "amount", 1200000), 950000);
+  assert.equal(discountAmount(950000, "amount", ""), 0);
+  assert.equal(discountAmount(950000, "amount", -1), 0);
 });
 test("Multiple sections reflect price updates, product removal and quantity edits", () => {
   const products = [
