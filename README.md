@@ -1,14 +1,14 @@
 # VUA TỎI PRICE
 
-Ứng dụng React + Vite, Firebase Google Auth và Firestore. Bản Vercel công khai ở `https://vuatoi-price.vercel.app`; domain riêng để cấu hình sau.
+Ứng dụng React + Vite, Firebase Google Auth và Firestore. Bản production: `https://vuatoi-price.vercel.app`.
 
 ## Chạy local
 
-Yêu cầu Node.js 22.12+ và npm. `npm install`, copy `.env.example` thành `.env.local`, điền Web config project **vuatoi-price**, chạy `npm run dev`. Không commit `.env.local`. `npm run build` tạo thư mục `dist`; `npm run preview` kiểm tra bản build. Nếu npm trên Windows lỗi, dùng `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js"` thay cho npm.
+Yêu cầu Node.js 22.12+, Java 21+ và npm. `npm install`, copy `.env.example` thành `.env.local`, điền Web config project **vuatoi-price**, chạy `npm run dev:local` (hoặc `start-local.cmd`). Không commit `.env.local`. `npm run build` tạo thư mục `dist`; `npm run preview` kiểm tra bản build. Nếu npm trên Windows lỗi, dùng `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js"` thay cho npm.
 
-Bản local mở ở `http://127.0.0.1:5173/`; Admin nhập sản phẩm tại `http://127.0.0.1:5173/admin/products`. Gmail Admin đầu tiên là `cmavuatoilyson@gmail.com`. Có thể chạy `start-local.cmd` khi server chưa chạy, hoặc dùng `node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173 --strictPort`. Giữ cửa sổ terminal mở trong lúc sử dụng.
+Bản local mở ở `http://127.0.0.1:5173/`; Admin tại `http://127.0.0.1:5173/admin/products`. Gmail Admin đầu tiên là `cmavuatoilyson@gmail.com`. Giữ cửa sổ terminal mở trong lúc sử dụng. Lần đầu `dev:local` đọc 29 sản phẩm hiện có từ project thật, tách giá đại lý và nạp bản sao vào Firestore Emulator trên máy. Firebase Auth **vẫn là Google thật**: người dùng chọn tài khoản Google, không nhập thông tin giả lập. Chỉ Firestore dùng Emulator; thay đổi ở Admin local chưa ghi lên Firestore production. Dữ liệu local được lưu vào `.local-data/firestore-snapshot.json` khoảng mỗi 15 giây và khôi phục khi chạy lại.
 
-Frontend đọc sản phẩm từ Firebase thật. Admin tự nhập giá; không seed giá giả. Lần tính chỉ được lưu vào Firestore khi bấm **Tính tổng**; **Nhập lại từ 0** chỉ xóa dữ liệu đang nhập trên Home.
+Home yêu cầu đăng nhập Google trước khi đọc sản phẩm. Admin tự nhập giá; không seed giá giả. Lần tính chỉ được lưu vào Firestore khi bấm **Tính tổng**; **Nhập lại từ 0** chỉ xóa dữ liệu đang nhập trên Home.
 
 ## Firebase ban đầu
 
@@ -20,7 +20,7 @@ Frontend đọc sản phẩm từ Firebase thật. Admin tự nhập giá; khôn
 
 ## Chức năng và bảo mật
 
-Home không cần đăng nhập để xem sản phẩm đang bán. Chỉ có một mục sản phẩm: đổi tên mục, thêm/xóa dòng, đổi sản phẩm và số lượng. Chọn giảm theo % hoặc tiền; bấm **Tính tổng** để hiện tổng và lưu bản chụp giá, số lượng, chiết khấu vào `calculations`. Lần lưu cần Google Login. **Nhập lại từ 0** xóa form hiện tại; lịch sử đã lưu vẫn còn.
+Home cần Google Login để xem sản phẩm đang bán. Chỉ có một mục sản phẩm: đổi tên mục, thêm/xóa dòng, đổi sản phẩm và số lượng. Chọn giảm theo % hoặc tiền; bấm **Tính tổng** để hiện tổng và lưu bản chụp giá, số lượng, chiết khấu vào `calculations`. **Nhập lại từ 0** xóa form hiện tại; lịch sử đã lưu vẫn còn. Giá đại lý được lưu riêng trong `dealerPrices`, chỉ Admin hoặc Gmail được Admin cấp trong `/admin/dealers` mới đọc được. Người không có quyền chỉ nhận sản phẩm và giá bán lẻ.
 
 Admin `/admin`, `/admin/products`, `/admin/admins`, `/admin/history`: Google Login, kiểm tra realtime document admins của chính email; chỉ Admin active có quyền đọc lịch sử, ghi products và quản lý Gmail. Lịch sử chỉ nhận bản ghi từ Google Login, không cho sửa; Admin chọn giữ 3/7/10/30 ngày, mặc định 7. Khi Admin mở Lịch sử hoặc lưu thời hạn mới, app xóa các bản ghi quá hạn. Vì project chưa bật Billing, hiện không có tác vụ máy chủ tự chạy khi Admin không mở trang. Rules còn kiểm tra email_verified, provider google.com, dữ liệu và thời điểm xóa. Xóa sản phẩm bằng active=false để có thể khôi phục.
 
@@ -28,7 +28,7 @@ Admin `/admin`, `/admin/products`, `/admin/admins`, `/admin/history`: Google Log
 
 `npm test`: format VND, quantity, tổng, chiết khấu và bản chụp lịch sử một mục.
 
-`npm run test:rules`: cần Java 21+ cho Firestore Emulator; kiểm tra quyền sản phẩm, Gmail, lưu/đọc lịch sử, thời hạn 3/7/10/30 ngày và chỉ xóa bản ghi quá hạn. Chỉ dùng project demo/test với emulator; script kết nối 127.0.0.1:8080.
+`npm run test:rules`: cần Java 21+ cho Firestore Emulator; kiểm tra đăng nhập Home, phân quyền giá đại lý, Gmail, lưu/đọc lịch sử, thời hạn 3/7/10/30 ngày và chỉ xóa bản ghi quá hạn. Chỉ dùng project demo/test với emulator; script kết nối 127.0.0.1:8080.
 
 Kiểm tra UI desktop/mobile và production: tìm sản phẩm, đổi số lượng/sản phẩm, chiết khấu, Tính tổng, Nhập lại, lịch sử và cài đặt thời hạn; đăng nhập Admin; tạo/sửa/ngừng bán/bật lại sản phẩm; thêm/tắt/xóa Gmail khác; lỗi mạng và không có sản phẩm.
 
@@ -36,19 +36,17 @@ Kiểm tra UI desktop/mobile và production: tìm sản phẩm, đổi số lư�
 
 1. `npx firebase login`, `npx firebase projects:list`, xác nhận quyền project vuatoi-price.
 2. Điền `.env.local` trước khi build; Vite đưa Web config vào bundle.
-3. `npm run build`, `npx vercel deploy --prod --yes` cho Vercel, hoặc `npx firebase deploy --only hosting,firestore:rules --project vuatoi-price` cho Firebase Hosting.
-4. Firebase Console → Hosting → Add custom domain → nhập **price.vuatoi.com.vn**.
-5. Tại nhà cung cấp DNS, thêm chính xác các bản ghi TXT và A/CNAME mà wizard Firebase cung cấp, tránh bản ghi xung đột. Không suy đoán IP và không thay DNS khi chưa có quyền. Chờ xác minh và certificate TLS.
-6. Bổ sung domain đang dùng vào Auth Authorized domains, kiểm tra HTTPS, reload trực tiếp `/admin/products` và `/admin/history`, Google Login và toàn bộ chức năng trên production.
+3. `npm run build`, `npx firebase deploy --only firestore:rules --project vuatoi-price`, rồi `npx vercel deploy --prod --yes` lên project Vercel `vua-toi/vuatoi-price`.
+4. Kiểm tra HTTPS, reload trực tiếp `/admin/products` và `/admin/history`, Google Login và toàn bộ chức năng trên production.
 
-Firebase Hosting có rewrite SPA và public dir dist đã được chuẩn bị trong `firebase.json`; project target trong `.firebaserc`. Deploy sẽ cập nhật Rules hiện có, cần kiểm tra nếu project dùng chung với ứng dụng khác.
+Vercel có rewrite SPA trong `vercel.json`. Firebase Hosting vẫn có cấu hình trong `firebase.json` nhưng hiện không dùng cho URL production này.
 
 Tài liệu: [Google Auth](https://firebase.google.com/docs/auth/web/google-signin), [Firestore Rules](https://firebase.google.com/docs/firestore/security/get-started), [Hosting custom domain](https://firebase.google.com/docs/hosting/custom-domain).
 
 ## Trạng thái bàn giao
 
-Firestore Rules mới cho lịch sử và cài đặt thời hạn đã được triển khai trên project thật. Bản Vercel đã tắt Require Log In, `vuatoi-price.vercel.app` đã có trong Firebase Auth Authorized Domains và truy cập công khai trả HTTP 200. Xem [DEPLOYMENT.md](DEPLOYMENT.md) để biết các bước domain riêng còn lại.
+Đã chuyển 29 giá đại lý từ `products` sang `dealerPrices` trên Firestore production, xác minh không còn trường giá đại lý trong tài liệu sản phẩm, triển khai Security Rules mới và deploy Vercel production. Bản Vercel đã tắt Require Log In, `vuatoi-price.vercel.app` có trong Firebase Auth Authorized Domains. Xem [DEPLOYMENT.md](DEPLOYMENT.md) để biết trạng thái triển khai.
 
-Đã kiểm tra: 5 bài test tính toán, 7 nhóm Rules bằng Emulator, build Vite, Home một mục và phần cài đặt 7 ngày trên trình duyệt local. Không tạo bản ghi lịch sử kiểm thử trên Firestore thật.
+Đã kiểm tra: 5 bài test tính toán, 8 nhóm Rules bằng Emulator, build Vite, local snapshot khôi phục đủ 29 sản phẩm, Vercel production trả HTTP 200 cho Home và route Admin, người chưa đăng nhập bị Firestore từ chối đọc products và dealerPrices. Google Login thật đã được kiểm tra trên bản local; cần kiểm tra tương tác trên trình duyệt production sau deploy. Không tạo bản ghi lịch sử kiểm thử trên Firestore thật.
 
 `npm audit --omit=dev` không còn lỗ hổng tại lúc kiểm tra. Firebase CLI vẫn có cảnh báo dependency chuyển tiếp thuộc công cụ development; chúng không được đưa vào frontend bundle. Không dùng `audit fix --force` để ép downgrade Firebase SDK.

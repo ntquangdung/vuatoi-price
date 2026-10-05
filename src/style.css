@@ -80,6 +80,17 @@ header {
   margin-top: 4px;
   color: var(--muted);
 }
+.environment-badge {
+  background: #e2eddb;
+  border: 1px solid #c9dfbe;
+  border-radius: 999px;
+  color: #365d3a;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-left: auto;
+  padding: 8px 11px;
+}
 .header-nav {
   display: flex;
   gap: 6px;
@@ -122,6 +133,13 @@ h2 {
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 32px;
+  padding: 28px 32px;
+  border: 1px solid #dce7d7;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 91% 12%, #dce9cf 0, transparent 31%),
+    linear-gradient(135deg, #ffffff 0%, #f0f5e8 100%);
+  box-shadow: 0 16px 40px #2848360d;
 }
 .intro-actions {
   display: flex;
@@ -190,6 +208,48 @@ h2 {
   font-size: 12px;
   margin: -14px 0 22px;
   padding: 11px 14px;
+}
+.dealer-locked {
+  align-items: center;
+  background: #ffffffba;
+  border: 1px solid #dce5d7;
+  border-radius: 10px;
+  color: #627466;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 9px;
+  line-height: 1.5;
+  max-width: 230px;
+  padding: 11px 13px;
+}
+.dealer-locked .icon {
+  width: 16px;
+  height: 16px;
+}
+.home-account {
+  align-items: center;
+  color: #5d705d;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 8px;
+  margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+.text-button {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--green);
+  font-size: 11px;
+  min-height: 0;
+  padding: 0 0 0 8px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.text-button:hover {
+  background: transparent !important;
+  color: #2e6b4a;
 }
 .intro p:not(.eyebrow) {
   color: var(--muted);
@@ -755,6 +815,7 @@ label {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
   margin: 0 0 18px;
 }
 .calculate-actions button {
@@ -764,6 +825,22 @@ label {
   justify-content: center;
   min-height: 46px;
   min-width: 150px;
+}
+.calculate-actions button:first-child {
+  order: 2;
+  min-height: 58px;
+  min-width: 220px;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px #1a503826;
+}
+.calculate-actions button:first-child .icon {
+  width: 22px;
+  height: 22px;
+}
+.calculate-actions button.secondary {
+  order: 1;
 }
 .calculation-hint {
   color: var(--muted);
@@ -870,6 +947,19 @@ footer span {
   margin: 64px auto;
   padding: 40px;
   text-align: center;
+}
+.home-auth {
+  border-color: #dce7d7;
+  background:
+    radial-gradient(circle at 88% 0%, #e5efd9 0, transparent 45%), #fff;
+  box-shadow: 0 20px 60px #1b49351b;
+}
+.home-auth h1 {
+  font-size: clamp(28px, 4vw, 35px);
+}
+.home-auth .login-button {
+  justify-content: center;
+  gap: 10px;
 }
 .auth-card h1 {
   font-size: 28px;
@@ -1379,6 +1469,10 @@ td.actions .icon {
   .header-nav a {
     padding: 10px 12px;
   }
+  .environment-badge {
+    font-size: 8px;
+    padding: 7px 9px;
+  }
   main {
     padding: 30px 20px 20px;
   }
@@ -1386,6 +1480,7 @@ td.actions .icon {
     flex-wrap: wrap;
     gap: 16px;
     margin-bottom: 24px;
+    padding: 22px;
   }
   .intro-actions {
     align-items: flex-start;
@@ -1555,6 +1650,9 @@ td.actions .icon {
   }
   .calculate-actions button {
     flex: 1;
+  }
+  .calculate-actions button:first-child {
+    min-width: 0;
   }
   .grand-total {
     padding: 18px;

@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 const env = import.meta.env;
 const config = {
   apiKey: env.VITE_FIREBASE_API_KEY,
@@ -19,11 +19,15 @@ const hasConfig = Boolean(
 let auth = null;
 let db = null;
 let setupError = "";
+const usingEmulators = import.meta.env.DEV && env.VITE_USE_LOCAL_FIRESTORE === "true";
 if (hasConfig) {
   try {
     const app = initializeApp(config);
     auth = getAuth(app);
     db = getFirestore(app);
+    if (usingEmulators) {
+      connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    }
   } catch {
     setupError =
       "Cấu hình Firebase không hợp lệ. Vui lòng kiểm tra Web config trong .env.local.";
@@ -32,3 +36,4 @@ if (hasConfig) {
 export { auth, db };
 export const configured = Boolean(auth && db);
 export const firebaseSetupError = setupError;
+export { usingEmulators };

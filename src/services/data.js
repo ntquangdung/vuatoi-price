@@ -13,6 +13,8 @@ import {
   deleteDoc,
   serverTimestamp,
   Timestamp,
+  writeBatch,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 export const normalizeEmail = (value) => value.trim().toLowerCase();
@@ -24,7 +26,10 @@ export const watchProducts = (all, next, error) =>
     (snapshot) =>
       next(
         snapshot.docs
-          .map((d) => ({ ...d.data(), id: d.id }))
+          .map((d) => {
+            const { dealerPrice: _legacyDealerPrice, ...product } = d.data();
+            return { ...product, id: d.id };
+          })
           .sort((a, b) => a.name.localeCompare(b.name, "vi")),
       ),
     error,
@@ -46,17 +51,60 @@ export const watchAdmins = (next, error) =>
       ),
     error,
   );
-export const saveProduct = (id, data) =>
-  id
-    ? updateDoc(doc(db, "products", id), {
-        ...data,
-        updatedAt: serverTimestamp(),
-      })
-    : addDoc(collection(db, "products"), {
-        ...data,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+export const watchDealerAccess = (email, next, error) =>
+  onSnapshot(
+    doc(db, "dealerViewers", normalizeEmail(email)),
+    (snapshot) => next(snapshot.exists() && snapshot.data().active === true),
+    error,
+  );
+export const watchDealerViewers = (next, error) =>
+  onSnapshot(
+    collection(db, "dealerViewers"),
+    (snapshot) =>
+      next(
+        snapshot.docs
+          .map((entry) => ({ ...entry.data(), id: entry.id }))
+          .sort((a, b) => a.email.localeCompare(b.email)),
+      ),
+    error,
+  );
+export const watchDealerPrices = (next, error) =>
+  onSnapshot(
+    collection(db, "dealerPrices"),
+    (snapshot) =>
+      next(
+        Object.fromEntries(
+          snapshot.docs.map((entry) => [entry.id, entry.data().price]),
+        ),
+      ),
+    error,
+  );
+export const saveProduct = async (id, data) => {
+  const { dealerPrice, ...product } = data;
+  const productRef = id || doc(collection(db, "products")).id;
+  const batch = writeBatch(db);
+  if (id) {
+    batch.update(doc(db, "products", productRef), {
+      ...product,
+      dealerPrice: deleteField(),
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    batch.set(doc(db, "products", productRef), {
+      ...product,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+  const dealerRef = doc(db, "dealerPrices", productRef);
+  if (dealerPrice == null) batch.delete(dealerRef);
+  else
+    batch.set(dealerRef, {
+      price: dealerPrice,
+      updatedAt: serverTimestamp(),
+    });
+  await batch.commit();
+};
 export const toggleProduct = (p) =>
   updateDoc(doc(db, "products", p.id), {
     active: !p.active,
@@ -71,6 +119,18 @@ export const saveAdmin = (email, active) =>
 export const toggleAdmin = (a) =>
   updateDoc(doc(db, "admins", a.id), { active: !a.active });
 export const removeAdmin = (id) => deleteDoc(doc(db, "admins", id));
+export const saveDealerViewer = (email) =>
+  setDoc(doc(db, "dealerViewers", normalizeEmail(email)), {
+    email: normalizeEmail(email),
+    active: true,
+    createdAt: serverTimestamp(),
+  });
+export const toggleDealerViewer = (viewer) =>
+  updateDoc(doc(db, "dealerViewers", viewer.id), {
+    active: !viewer.active,
+  });
+export const removeDealerViewer = (id) =>
+  deleteDoc(doc(db, "dealerViewers", id));
 export const saveCalculation = (data, email) =>
   addDoc(collection(db, "calculations"), {
     ...data,

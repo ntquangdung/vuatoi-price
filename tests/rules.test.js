@@ -54,8 +54,16 @@ before(async () => {
 after(async () => {
   await env?.cleanup();
 });
-test("Public reads only active products; no writes or admin list", async () => {
-  const db = env.unauthenticatedContext().firestore();
+test("Home products require Google sign-in; only active products are visible", async () => {
+  const publicDb = env.unauthenticatedContext().firestore();
+  const db = env
+    .authenticatedContext("customer", token("customer@gmail.com"))
+    .firestore();
+  await assertFails(
+    getDocs(
+      query(collection(publicDb, "products"), where("active", "==", true)),
+    ),
+  );
   await assertSucceeds(
     getDocs(query(collection(db, "products"), where("active", "==", true))),
   );
@@ -88,7 +96,6 @@ test("Admin CRUD validates data and preserves timestamps", async () => {
       name: "Tỏi",
       unit: "kg",
       price: 250000,
-      dealerPrice: 200000,
       active: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -108,19 +115,19 @@ test("Admin CRUD validates data and preserves timestamps", async () => {
   );
   await assertFails(
     updateDoc(doc(db, "products", "new"), {
-      dealerPrice: -1,
-      updatedAt: serverTimestamp(),
-    }),
-  );
-  await assertFails(
-    updateDoc(doc(db, "products", "new"), {
-      dealerPrice: "200.000đ",
+      dealerPrice: 200000,
       updatedAt: serverTimestamp(),
     }),
   );
   await assertSucceeds(
-    updateDoc(doc(db, "products", "new"), {
-      dealerPrice: null,
+    setDoc(doc(db, "dealerPrices", "new"), {
+      price: 200000,
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "dealerPrices", "new"), {
+      price: -1,
       updatedAt: serverTimestamp(),
     }),
   );
@@ -131,6 +138,54 @@ test("Admin CRUD validates data and preserves timestamps", async () => {
     }),
   );
   await assertSucceeds(deleteDoc(doc(db, "products", "new")));
+  await assertSucceeds(deleteDoc(doc(db, "dealerPrices", "new")));
+});
+test("Only Admin-approved Gmail can read dealer prices; revocation is immediate", async () => {
+  const adminDb = env
+    .authenticatedContext("owner", token("owner@gmail.com"))
+    .firestore();
+  const viewerDb = env
+    .authenticatedContext("dealer", token("dealer@gmail.com"))
+    .firestore();
+  const publicDb = env.unauthenticatedContext().firestore();
+  await assertSucceeds(
+    setDoc(doc(adminDb, "dealerPrices", "true"), {
+      price: 190000,
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  await assertFails(getDoc(doc(publicDb, "dealerPrices", "true")));
+  await assertFails(getDoc(doc(viewerDb, "dealerPrices", "true")));
+  await assertFails(getDocs(collection(viewerDb, "dealerPrices")));
+  await assertFails(
+    setDoc(doc(viewerDb, "dealerViewers", "dealer@gmail.com"), {
+      email: "dealer@gmail.com",
+      active: true,
+      createdAt: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    setDoc(doc(adminDb, "dealerViewers", "dealer@gmail.com"), {
+      email: "dealer@gmail.com",
+      active: true,
+      createdAt: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(getDoc(doc(viewerDb, "dealerPrices", "true")));
+  await assertSucceeds(getDocs(collection(viewerDb, "dealerPrices")));
+  await assertFails(getDocs(collection(viewerDb, "dealerViewers")));
+  await assertFails(
+    updateDoc(doc(viewerDb, "products", "true"), {
+      price: 1,
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    updateDoc(doc(adminDb, "dealerViewers", "dealer@gmail.com"), {
+      active: false,
+    }),
+  );
+  await assertFails(getDoc(doc(viewerDb, "dealerPrices", "true")));
 });
 test("Admin manages Gmail, cannot remove own access; revocation takes effect", async () => {
   const db = env

@@ -7,11 +7,16 @@ import {
   watchAccess,
   watchProducts,
   watchAdmins,
+  watchDealerPrices,
+  watchDealerViewers,
   saveProduct,
   toggleProduct,
   saveAdmin,
   toggleAdmin,
   removeAdmin,
+  saveDealerViewer,
+  toggleDealerViewer,
+  removeDealerViewer,
   normalizeEmail,
 } from "../services/data";
 import { formatMoney } from "../utils/currency";
@@ -176,6 +181,9 @@ function Dashboard({ user }) {
   const online = useOnline();
   const [products, setProducts] = useState([]),
     [admins, setAdmins] = useState([]),
+    [dealerPrices, setDealerPrices] = useState({}),
+    [dealerPricesReady, setDealerPricesReady] = useState(false),
+    [dealerViewers, setDealerViewers] = useState([]),
     [loading, setLoading] = useState(true),
     [dataError, setDataError] = useState(""),
     [error, setError] = useState(""),
@@ -185,13 +193,20 @@ function Dashboard({ user }) {
     [form, setForm] = useState(blank),
     [edit, setEdit] = useState(null),
     [email, setEmail] = useState(""),
+    [viewerEmail, setViewerEmail] = useState(""),
     [emailActive, setEmailActive] = useState(true);
   const pathname = useLocation().pathname;
   const tab = pathname.endsWith("/admins")
     ? "admins"
-    : pathname.endsWith("/history")
-      ? "history"
-      : "products";
+    : pathname.endsWith("/dealers")
+      ? "dealers"
+      : pathname.endsWith("/history")
+        ? "history"
+        : "products";
+  const productsWithDealer = products.map((product) => ({
+    ...product,
+    dealerPrice: dealerPrices[product.id] ?? null,
+  }));
   useEffect(() => {
     const fail = () => {
       setDataError(
@@ -207,10 +222,17 @@ function Dashboard({ user }) {
         },
         fail,
       ),
-      b = watchAdmins(setAdmins, fail);
+      b = watchAdmins(setAdmins, fail),
+      c = watchDealerPrices((prices) => {
+        setDealerPrices(prices);
+        setDealerPricesReady(true);
+      }, fail),
+      d = watchDealerViewers(setDealerViewers, fail);
     return () => {
       a();
       b();
+      c();
+      d();
     };
   }, []);
   useEffect(() => {
@@ -271,7 +293,7 @@ function Dashboard({ user }) {
       setEdit(null);
     });
   };
-  const filteredProducts = products.filter((p) =>
+  const filteredProducts = productsWithDealer.filter((p) =>
     p.name
       .toLocaleLowerCase("vi")
       .includes(search.trim().toLocaleLowerCase("vi")),
@@ -313,6 +335,15 @@ function Dashboard({ user }) {
           Gmail quản lý<span className="tab-count">{admins.length}</span>
         </Link>
         <Link
+          className={tab === "dealers" ? "selected" : ""}
+          to="/admin/dealers"
+          aria-current={tab === "dealers" ? "page" : undefined}
+        >
+          <Icon name="eye" />
+          Quyền giá đại lý
+          <span className="tab-count">{dealerViewers.length}</span>
+        </Link>
+        <Link
           className={tab === "history" ? "selected" : ""}
           to="/admin/history"
           aria-current={tab === "history" ? "page" : undefined}
@@ -343,7 +374,9 @@ function Dashboard({ user }) {
         </p>
       )}
       {loading && <p role="status">Đang tải dữ liệu…</p>}
-      {tab === "products" ? (
+      {tab === "products" && !dealerPricesReady ? (
+        <p role="status" className="notice">Đang tải giá đại lý và quyền sản phẩm…</p>
+      ) : tab === "products" ? (
         <div className="admin-layout">
           <form className="card form-grid product-form" onSubmit={submit}>
             <div className="form-heading">
@@ -537,6 +570,116 @@ function Dashboard({ user }) {
         </div>
       ) : tab === "history" ? (
         <HistoryPanel />
+      ) : tab === "dealers" ? (
+        <div className="admin-layout">
+          <form
+            className="card form-grid"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const normalized = normalizeEmail(viewerEmail);
+              if (!/^[a-z0-9._%+-]+@gmail\.com$/.test(normalized)) {
+                setError("Vui lòng nhập địa chỉ @gmail.com hợp lệ.");
+                return;
+              }
+              if (dealerViewers.some((viewer) => viewer.id === normalized)) {
+                setError("Gmail này đã có trong danh sách xem giá đại lý.");
+                return;
+              }
+              run(async () => {
+                await saveDealerViewer(normalized);
+                setViewerEmail("");
+              });
+            }}
+          >
+            <div className="form-heading">
+              <span className="form-icon">
+                <Icon name="eye" />
+              </span>
+              <div>
+                <h2>Cấp quyền xem giá đại lý</h2>
+                <p>
+                  Gmail này chỉ được xem giá đại lý, không có quyền quản trị.
+                </p>
+              </div>
+            </div>
+            <label>
+              Gmail
+              <input
+                required
+                type="email"
+                disabled={busy}
+                value={viewerEmail}
+                placeholder="ten@gmail.com"
+                onChange={(event) => setViewerEmail(event.target.value)}
+              />
+            </label>
+            <button disabled={busy}>
+              {busy ? "Đang lưu…" : "Cấp quyền"}
+              <Icon name="plus" />
+            </button>
+          </form>
+          <div className="catalog-panel">
+            <div className="catalog-heading">
+              <h2>Gmail được xem giá đại lý</h2>
+              <span className="muted">{dealerViewers.length} tài khoản</span>
+            </div>
+            <div className="table-wrap card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Gmail</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dealerViewers.map((viewer) => (
+                    <tr key={viewer.id}>
+                      <td
+                        className="product-name-cell email-cell"
+                        data-label="Gmail"
+                      >
+                        {viewer.email}
+                      </td>
+                      <td data-label="Trạng thái">
+                        <span
+                          className={`badge ${viewer.active ? "" : "inactive"}`}
+                        >
+                          {viewer.active ? "Được xem" : "Đã tắt"}
+                        </span>
+                      </td>
+                      <td className="actions">
+                        <button
+                          className="secondary"
+                          disabled={busy}
+                          onClick={() => run(() => toggleDealerViewer(viewer))}
+                        >
+                          {viewer.active ? "Tắt quyền" : "Bật quyền"}
+                        </button>
+                        <button
+                          className="quiet"
+                          disabled={busy}
+                          onClick={() =>
+                            run(() => removeDealerViewer(viewer.id))
+                          }
+                        >
+                          Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!dealerViewers.length && (
+                <div className="table-empty">
+                  <Icon name="users" />
+                  <strong>Chưa cấp quyền cho Gmail nào</strong>
+                  <p>Admin đang hoạt động luôn có quyền xem giá đại lý.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="admin-layout">
           <form

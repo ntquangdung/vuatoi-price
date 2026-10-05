@@ -1,42 +1,36 @@
-# Triển khai price.vuatoi.com.vn
+# Triển khai Vercel
 
-Project: `vuatoi-price` · Hosting site: `vuatoi-price`.
+URL production: https://vuatoi-price.vercel.app/ · Vercel project: `vua-toi/vuatoi-price` · Firebase project: `vuatoi-price`.
 
-Đã cấu hình: Firestore Standard tại `asia-southeast1`, Google Provider, Gmail Admin đầu tiên `cmavuatoilyson@gmail.com`, authorized domains local/Hosting/domain chính/Vercel, Security Rules production và custom-domain binding. Bản Vercel công khai: https://vuatoi-price.vercel.app.
+Ngày 05/10/2026 đã triển khai FE production lên Vercel và Firestore Security Rules lên Firebase. Vercel deployment `dpl_FrAfSrHUaYaUK2NDuA8AQ6BbQZQW` ở trạng thái Ready và alias đúng URL trên. Home và `/admin/products` đều trả HTTP 200; không bật lớp đăng nhập Vercel. Firebase Auth cho phép `vuatoi-price.vercel.app`.
 
-## DNS cần thay đổi
+## Dữ liệu và quyền
 
-Firebase Hosting API ngày 03/10/2026 trả về yêu cầu sau cho domain chính:
-
-| Thao tác | Loại | Host | Giá trị |
-|---|---|---|---|
-| Xóa bản ghi hiện tại | A | `price` | `160.187.0.67` |
-| Thêm | CNAME | `price` | `vuatoi-price.web.app` |
-
-Nếu DNS provider yêu cầu hostname đầy đủ, nhập `price.vuatoi.com.vn`. Không đặt CNAME cùng A/AAAA ở cùng hostname. Việc đổi bản ghi chuyển lưu lượng subdomain sang Firebase Hosting; chỉ thực hiện khi sẵn sàng go-live và có quyền quản lý DNS. Agent chưa thay DNS.
-
-Trạng thái hiện tại là `HOST_MISMATCH`, `OWNERSHIP_MISSING`, certificate đang xác minh vì subdomain vẫn trỏ máy chủ cũ. Sau khi đổi DNS, kiểm tra wizard Firebase Hosting cho yêu cầu cập nhật mới và chờ certificate HTTPS. Bản ghi ACME TXT cho phương án xác minh khác có thể thay đổi; lấy giá trị hiện tại từ Console nếu cần, không dùng mã cũ.
+Dữ liệu production có 29 sản phẩm. Migration đã sao lưu dữ liệu cũ trong `.local-data/` (chỉ trên máy local, được gitignore), chuyển đủ 29 giá đại lý vào `dealerPrices` và xóa trường `dealerPrice` khỏi `products`. Security Rules giới hạn giá đại lý cho Admin hoặc Gmail được Admin cấp trong `/admin/dealers`. Home yêu cầu Google Login; mọi Gmail Google có thể dùng giá bán lẻ, còn giá đại lý phụ thuộc quyền trong Firestore.
 
 ## Publish production
 
-Build từ `.env.local` đã được cấu hình. Preview và production dùng cùng project/database; không nhập dữ liệu giả vào danh sách sản phẩm thực tế.
-
-Bản Firebase Hosting preview: https://vuatoi-price--review-jpsyrv9r.web.app — hết hạn lúc 16:50 ngày 10/10/2026 (giờ Việt Nam). Firebase Hosting live chưa được cập nhật. Bản ứng dụng mới đã được deploy production trên Vercel tại https://vuatoi-price.vercel.app, không yêu cầu tài khoản Vercel để xem.
+Vercel production dùng environment variables của project `vua-toi/vuatoi-price`. Chỉ triển khai bản Vercel cho lần bàn giao này; không thay DNS hoặc deploy Firebase Hosting live.
 
 ```powershell
-node node_modules/vite/bin/vite.js build
-node node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting --project vuatoi-price
+npm test
+npm run test:rules
+npm run build
+npx firebase deploy --only firestore:rules --project vuatoi-price --non-interactive
+npx vercel deploy --prod --yes
 ```
 
-Nếu cần cập nhật Rules, chạy `node node_modules/firebase-tools/lib/bin/firebase.js deploy --only firestore:rules --project vuatoi-price`. Rules hiện tại đã được publish và kiểm thử. Mã Web config không phải service-account credential; `.env.local` được gitignore.
+Các lệnh deploy cần Firebase CLI đăng nhập `cmavuatoilyson@gmail.com` và Vercel account sở hữu project. Mã Web config không phải service-account credential; `.env.local` được gitignore.
 
-## Kiểm tra sau go-live
+## Kiểm tra
 
-- HTTPS `price.vuatoi.com.vn`, route trực tiếp `/admin/products` và `/admin/admins`.
+- HTTPS `vuatoi-price.vercel.app`, route trực tiếp `/admin/products` và `/admin/admins`.
 - Home tải Firestore, tìm/chọn sản phẩm trong một mục, đổi số lượng, chiết khấu, bấm Tính tổng để lưu lịch sử và Nhập lại từ 0.
 - Admin Lịch sử chọn giữ bản ghi 3/7/10/30 ngày (mặc định 7); bản ghi quá hạn được dọn khi Admin mở trang hoặc đổi cài đặt.
 - Google Login của Gmail Admin, Gmail ngoài danh sách bị chặn.
 - Thêm/sửa/ngừng bán/bật lại sản phẩm; thêm/tắt/xóa Gmail khác.
 - Console không có lỗi nghiêm trọng; layout mobile và desktop.
 
-Đọc thêm: [Firebase custom domain](https://firebase.google.com/docs/hosting/custom-domain).
+Đã kiểm tra 5/5 bài test tính toán, 8/8 nhóm Security Rules, build Vite và Vercel build production. Home/Admin qua HTTPS trả HTTP 200; Firestore REST từ người chưa đăng nhập trả 403 cho cả `products` lẫn `dealerPrices`. Google Login thật đã được kiểm tra trên bản local; chưa kiểm tra tương tác đăng nhập bằng trình duyệt trên URL production sau lần deploy này.
+
+Binding domain cũ `price.vuatoi.com.vn` ở Firebase Hosting còn `HOST_MISMATCH`; nó không ảnh hưởng URL Vercel và không thuộc lần triển khai này.

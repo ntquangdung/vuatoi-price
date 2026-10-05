@@ -10,6 +10,6 @@ if not exist ".env.local" (
   pause
   exit /b 1
 )
-echo VUA TOI PRICE - http://127.0.0.1:5173
-node node_modules\vite\bin\vite.js --host 127.0.0.1 --port 5173 --strictPort
+echo VUA TOI PRICE - Google Auth + local Firestore - http://127.0.0.1:5173
+node scripts\dev-local.cjs
 pause

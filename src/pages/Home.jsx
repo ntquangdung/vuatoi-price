@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth, configured, firebaseSetupError } from "../firebase/config";
-import { login } from "../firebase/auth";
-import { saveCalculation, watchProducts } from "../services/data";
+import { login, logout } from "../firebase/auth";
+import {
+  saveCalculation,
+  watchProducts,
+  watchAccess,
+  watchDealerAccess,
+  watchDealerPrices,
+} from "../services/data";
 import { snapshotCalculation } from "../utils/calculation";
 import {
   discountAmount,
@@ -19,6 +26,15 @@ const newSection = () => ({
 });
 export default function Home() {
   const online = useOnline();
+  const [user, setUser] = useState(null),
+    [authReady, setAuthReady] = useState(false),
+    [authError, setAuthError] = useState(""),
+    [signingIn, setSigningIn] = useState(false),
+    [isAdmin, setIsAdmin] = useState(false),
+    [isDealerViewer, setIsDealerViewer] = useState(false),
+    [dealerPrices, setDealerPrices] = useState({}),
+    [dealerReady, setDealerReady] = useState(false),
+    [dealerPriceError, setDealerPriceError] = useState("");
   const [products, setProducts] = useState([]),
     [loading, setLoading] = useState(configured),
     [error, setError] = useState("");
@@ -32,8 +48,35 @@ export default function Home() {
     [saveMessage, setSaveMessage] = useState(""),
     [saveError, setSaveError] = useState("");
   const revision = useRef(0);
+  const canViewDealer = isAdmin || isDealerViewer;
+  const dealerVisible = canViewDealer && dealerReady && showDealerPrice;
+  const pricedProducts = products.map((product) => ({
+    ...product,
+    dealerPrice:
+      canViewDealer && dealerReady ? (dealerPrices[product.id] ?? null) : null,
+  }));
   useEffect(() => {
     if (!configured) return;
+    return onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        setUser(currentUser);
+        setAuthReady(true);
+      },
+      () => {
+        setAuthError(
+          "Không thể kiểm tra đăng nhập Google. Vui lòng tải lại trang.",
+        );
+        setAuthReady(true);
+      },
+    );
+  }, []);
+  useEffect(() => {
+    if (!configured || !user) {
+      setProducts([]);
+      return;
+    }
+    setLoading(true);
     return watchProducts(
       false,
       (p) => {
@@ -48,14 +91,89 @@ export default function Home() {
         setLoading(false);
       },
     );
-  }, []);
+  }, [user?.uid]);
+  useEffect(() => {
+    if (!user?.email) {
+      setIsAdmin(false);
+      setIsDealerViewer(false);
+      return;
+    }
+    const onAccessError = () => {
+      setIsAdmin(false);
+      setIsDealerViewer(false);
+      setDealerPriceError("Không thể kiểm tra quyền xem giá đại lý.");
+    };
+    const stopAdmin = watchAccess(user.email, setIsAdmin, onAccessError);
+    const stopDealer = watchDealerAccess(
+      user.email,
+      setIsDealerViewer,
+      onAccessError,
+    );
+    return () => {
+      stopAdmin();
+      stopDealer();
+    };
+  }, [user?.email]);
+  useEffect(() => {
+    if (!canViewDealer) {
+      setShowDealerPrice(false);
+      setDealerPrices({});
+      setDealerReady(false);
+      return;
+    }
+    setDealerReady(false);
+    return watchDealerPrices(
+      (prices) => {
+        setDealerPrices(prices);
+        setDealerReady(true);
+        setDealerPriceError("");
+      },
+      () => {
+        setDealerPriceError("Không thể tải giá đại lý. Vui lòng thử lại.");
+        setDealerPrices({});
+        setDealerReady(false);
+        setShowDealerPrice(false);
+      },
+    );
+  }, [canViewDealer]);
   useEffect(() => {
     revision.current += 1;
     setSaveMessage("");
     setSaveError("");
     setCalculated(null);
     setSaved(false);
-  }, [sections, products, discountType, discountValue]);
+  }, [
+    sections,
+    products,
+    dealerPrices,
+    canViewDealer,
+    dealerReady,
+    discountType,
+    discountValue,
+  ]);
+  const signIn = async () => {
+    setAuthError("");
+    setSigningIn(true);
+    try {
+      await login();
+    } catch (error) {
+      const messages = {
+        "auth/popup-closed-by-user":
+          "Bạn đã đóng cửa sổ đăng nhập. Hãy thử lại.",
+        "auth/popup-blocked":
+          "Trình duyệt chặn cửa sổ Google. Hãy cho phép popup rồi thử lại.",
+        "auth/unauthorized-domain":
+          "Domain local chưa được thêm vào Firebase Auth.",
+        "auth/network-request-failed":
+          "Không thể kết nối Google. Hãy kiểm tra mạng rồi thử lại.",
+      };
+      setAuthError(
+        messages[error.code] || "Đăng nhập chưa hoàn tất. Hãy thử lại.",
+      );
+    } finally {
+      setSigningIn(false);
+    }
+  };
   const update = (id, fn) =>
     setSections((ss) => ss.map((s) => (s.id === id ? fn(s) : s)));
   const setQuantity = (sectionId, itemId, quantity) =>
@@ -77,7 +195,7 @@ export default function Home() {
     try {
       snapshot = snapshotCalculation(
         sections,
-        products,
+        pricedProducts,
         discountType,
         discountValue,
       );
@@ -94,7 +212,6 @@ export default function Home() {
     }
     setSaving(true);
     try {
-      const user = auth.currentUser || (await login()).user;
       if (!user?.email) throw new Error("missing-email");
       await saveCalculation(snapshot, user.email);
       if (revision.current === currentRevision) {
@@ -131,6 +248,48 @@ export default function Home() {
     setSaveMessage("");
     setSaveError("");
   };
+  if (!configured || !authReady || !user)
+    return (
+      <main className="auth-card card home-auth">
+        <span className="auth-icon">
+          <Icon name="calculator" />
+        </span>
+        <p className="eyebrow">BẢNG TÍNH GIÁ VUA TỎI</p>
+        <h1>Đăng nhập để bắt đầu.</h1>
+        <p>
+          Đăng nhập bằng Google để xem sản phẩm và tính giá. Giá đại lý chỉ hiện
+          với Gmail được Admin cấp quyền.
+        </p>
+        {!configured && (
+          <p role="alert" className="notice error">
+            {firebaseSetupError || "Chưa cấu hình Firebase."}
+          </p>
+        )}
+        {authError && (
+          <p role="alert" className="notice error">
+            {authError}
+          </p>
+        )}
+        {!online && (
+          <p role="alert" className="notice error">
+            Đang mất kết nối mạng.
+          </p>
+        )}
+        {configured && authReady && (
+          <button
+            className="login-button"
+            disabled={signingIn || !online}
+            onClick={signIn}
+          >
+            {signingIn ? "Đang đăng nhập…" : "Đăng nhập với Google"}
+            <Icon name="arrow" />
+          </button>
+        )}
+        {configured && !authReady && (
+          <p role="status">Đang kiểm tra đăng nhập…</p>
+        )}
+      </main>
+    );
   return (
     <main className="calculator-page">
       <div className="intro">
@@ -140,6 +299,13 @@ export default function Home() {
             Tính giá sản phẩm<span className="title-dot">.</span>
           </h1>
           <p>Chọn sản phẩm, nhập số lượng rồi bấm Tính tổng.</p>
+          <div className="home-account">
+            <span className="status-dot" />
+            <span>{user.email}</span>
+            <button type="button" className="text-button" onClick={logout}>
+              Đăng xuất
+            </button>
+          </div>
         </div>
         <div className="intro-actions">
           {!loading && configured && !error && online && (
@@ -148,27 +314,43 @@ export default function Home() {
               {products.length} sản phẩm đang bán
             </span>
           )}
-          <button
-            type="button"
-            className={`dealer-toggle ${showDealerPrice ? "active" : ""}`}
-            aria-pressed={showDealerPrice}
-            onClick={() => setShowDealerPrice((visible) => !visible)}
-          >
-            <span className="dealer-toggle-icon">
-              <Icon name="eye" />
+          {canViewDealer && !dealerPriceError ? (
+            <button
+              type="button"
+              className={`dealer-toggle ${dealerVisible ? "active" : ""}`}
+              aria-pressed={dealerVisible}
+              disabled={!dealerReady}
+              onClick={() => setShowDealerPrice((visible) => !visible)}
+            >
+              <span className="dealer-toggle-icon">
+                <Icon name="eye" />
+              </span>
+              <span>
+                <strong>
+                  {dealerVisible ? "Đang hiện giá đại lý" : "Xem giá đại lý"}
+                </strong>
+                <small>
+                  {dealerReady
+                    ? dealerVisible
+                      ? "Bấm để ẩn"
+                      : "Giá và tổng riêng"
+                    : "Đang tải giá…"}
+                </small>
+              </span>
+            </button>
+          ) : !canViewDealer ? (
+            <span className="dealer-locked">
+              <Icon name="eye" /> Giá đại lý cần Admin cấp quyền
             </span>
-            <span>
-              <strong>
-                {showDealerPrice ? "Đang hiện giá đại lý" : "Xem giá đại lý"}
-              </strong>
-              <small>
-                {showDealerPrice ? "Bấm để ẩn" : "Giá và tổng riêng"}
-              </small>
-            </span>
-          </button>
+          ) : null}
         </div>
       </div>
-      {showDealerPrice && (
+      {dealerPriceError && (
+        <p role="alert" className="notice error">
+          {dealerPriceError}
+        </p>
+      )}
+      {dealerVisible && (
         <p className="dealer-note">
           Tổng giá đại lý được tính riêng; tổng bán lẻ vẫn giữ nguyên.
         </p>
@@ -234,7 +416,7 @@ export default function Home() {
               </div>
             )}
             {s.items.map((item) => {
-              const p = products.find((p) => p.id === item.productId);
+              const p = pricedProducts.find((p) => p.id === item.productId);
               return (
                 <div className="product-row" key={item.id}>
                   <div className="row-product">
@@ -244,7 +426,7 @@ export default function Home() {
                         ? `Giá bán lẻ: ${formatMoney(p.price)} / ${p.unit}`
                         : "Chọn sản phẩm khác để tiếp tục"}
                     </div>
-                    {showDealerPrice && p && (
+                    {dealerVisible && p && (
                       <div className="dealer-price">
                         <span>GIÁ ĐẠI LÝ</span>
                         <strong>
@@ -330,14 +512,14 @@ export default function Home() {
                   </label>
                   <div className="line-total">
                     <small>
-                      {showDealerPrice ? "Thành tiền bán lẻ" : "Thành tiền"}
+                      {dealerVisible ? "Thành tiền bán lẻ" : "Thành tiền"}
                     </small>
                     <strong>
                       {formatMoney(
                         (p?.price ?? 0) * quantityValue(item.quantity),
                       )}
                     </strong>
-                    {showDealerPrice && (
+                    {dealerVisible && (
                       <div className="dealer-line-total">
                         <small>THÀNH TIỀN ĐẠI LÝ</small>
                         <strong>
@@ -382,12 +564,12 @@ export default function Home() {
               <div className="section-total">
                 <div className="total-pair">
                   <span>
-                    Tổng {showDealerPrice ? "bán lẻ " : ""}
+                    Tổng {dealerVisible ? "bán lẻ " : ""}
                     {s.name || `Mục ${index + 1}`}
                   </span>
                   <strong>{formatMoney(calculated.retailSubtotal)}</strong>
                 </div>
-                {showDealerPrice && (
+                {dealerVisible && (
                   <div className="total-pair dealer-total-pair">
                     <span>Tổng đại lý {s.name || `Mục ${index + 1}`}</span>
                     <strong>{formatDealerTotal(calculated.dealerTotal)}</strong>
@@ -473,7 +655,7 @@ export default function Home() {
           <span>
             {calculated?.discountAmount > 0
               ? "TỔNG SAU CHIẾT KHẤU"
-              : showDealerPrice
+              : dealerVisible
                 ? "TỔNG BÁN LẺ"
                 : "TỔNG TẤT CẢ"}
           </span>
@@ -492,7 +674,7 @@ export default function Home() {
             <span>Chiết khấu: -{formatMoney(calculated.discountAmount)}</span>
           </div>
         )}
-        {showDealerPrice && (
+        {dealerVisible && (
           <div className="grand-dealer-total">
             <span>TỔNG ĐẠI LÝ</span>
             <strong>
@@ -504,8 +686,7 @@ export default function Home() {
         )}
       </div>
       <p className="calculation-hint">
-        Bấm Tính tổng để lưu lần tính vào lịch sử. Bạn sẽ đăng nhập Google nếu
-        chưa đăng nhập.
+        Bấm Tính tổng để lưu lần tính vào lịch sử cho Admin kiểm tra.
       </p>
       {saveMessage && (
         <p role="status" className="notice">

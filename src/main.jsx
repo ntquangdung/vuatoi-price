@@ -11,6 +11,7 @@ import {
 import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import Icon from "./components/Icon";
+import { usingEmulators } from "./firebase/config";
 import "./style.css";
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             VUA TỎI <small>BẢNG TÍNH GIÁ</small>
           </span>
         </Link>
+        {usingEmulators && <span className="environment-badge">BẢN LOCAL</span>}
         <nav className="header-nav" aria-label="Điều hướng chính">
           <NavLink to="/" end>
             <Icon name="calculator" />
