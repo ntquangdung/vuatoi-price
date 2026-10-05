@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env.local
+.env.*.local
+*-debug.log
+.firebase/
+.npm-cache/
+.tools/
+.firebase-login-code
+*-permission.jpg
+artifacts/
+
+.vercel
+.env*
