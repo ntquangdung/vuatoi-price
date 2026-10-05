@@ -52,6 +52,18 @@ async function main() {
   const configUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${project}/config`;
   const config = await api(configUrl);
   console.log("Authorized domains:", config.authorizedDomains);
+  if (process.argv.includes("--add-vercel-domain")) {
+    const domain = "vuatoi-price.vercel.app";
+    if (config.authorizedDomains?.includes(domain)) {
+      console.log(`${domain} already authorized.`);
+    } else {
+      await api(`${configUrl}?updateMask=authorizedDomains`, "PATCH", {
+        authorizedDomains: [...(config.authorizedDomains || []), domain],
+      });
+      console.log(`${domain} authorized.`);
+    }
+    return;
+  }
   if (process.argv.includes("--apply")) {
     const authorizedDomains = [
       ...new Set([

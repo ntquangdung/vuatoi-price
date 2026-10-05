@@ -1,6 +1,6 @@
 # VUA TỎI PRICE
 
-Ứng dụng React + Vite, Firebase Google Auth và Firestore. Bản Vercel hiện tại ở `https://vuatoi-price.vercel.app` và vẫn bật Vercel Require Log In; domain riêng để cấu hình sau.
+Ứng dụng React + Vite, Firebase Google Auth và Firestore. Bản Vercel công khai ở `https://vuatoi-price.vercel.app`; domain riêng để cấu hình sau.
 
 ## Chạy local
 
@@ -13,7 +13,7 @@ Frontend đọc sản phẩm từ Firebase thật. Admin tự nhập giá; khôn
 ## Firebase ban đầu
 
 1. Mở [Firebase Console project vuatoi-price](https://console.firebase.google.com/project/vuatoi-price/overview). Authentication → Sign-in method → bật **Google**, chọn support email.
-2. Authentication → Settings → Authorized domains: cho phép `localhost`/`127.0.0.1` khi chạy local. `vuatoi-price.vercel.app` chỉ thêm khi mở quyền truy cập bản Vercel.
+2. Authentication → Settings → Authorized domains: đã cho phép `localhost`, `127.0.0.1` và `vuatoi-price.vercel.app`.
 3. Tạo Cloud Firestore database `(default)` ở location phù hợp. Không dùng Test Mode.
 4. Seed Admin đầu tiên bằng Console: collection `admins`, document ID **cmavuatoilyson@gmail.com**, fields `email` (string) = `cmavuatoilyson@gmail.com`, `active` (boolean) = `true`, `createdAt` (timestamp) = thời điểm tạo. ID là Gmail viết thường, không encode; dấu chấm và @ hợp lệ trong một Firestore document ID, Gmail không chứa dấu `/`.
 5. Deploy `firestore.rules` trước khi dùng app. Sau đó đăng nhập Admin để thêm sản phẩm. Không có sản phẩm mẫu hard-code. Nếu seed products bằng Console, mỗi document cần name/string, unit/string, price/number >= 0, active/boolean, createdAt/timestamp và updatedAt/timestamp.
@@ -47,7 +47,7 @@ Tài liệu: [Google Auth](https://firebase.google.com/docs/auth/web/google-sign
 
 ## Trạng thái bàn giao
 
-Firestore Rules mới cho lịch sử và cài đặt thời hạn đã được triển khai trên project thật. `vuatoi-price.vercel.app` vẫn có Vercel Require Log In; domain này chưa được thêm vào Firebase Auth Authorized Domains. Xem [DEPLOYMENT.md](DEPLOYMENT.md) để biết các bước domain riêng còn lại.
+Firestore Rules mới cho lịch sử và cài đặt thời hạn đã được triển khai trên project thật. Bản Vercel đã tắt Require Log In, `vuatoi-price.vercel.app` đã có trong Firebase Auth Authorized Domains và truy cập công khai trả HTTP 200. Xem [DEPLOYMENT.md](DEPLOYMENT.md) để biết các bước domain riêng còn lại.
 
 Đã kiểm tra: 5 bài test tính toán, 7 nhóm Rules bằng Emulator, build Vite, Home một mục và phần cài đặt 7 ngày trên trình duyệt local. Không tạo bản ghi lịch sử kiểm thử trên Firestore thật.
 

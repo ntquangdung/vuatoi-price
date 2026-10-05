@@ -2,7 +2,7 @@
 
 Project: `vuatoi-price` · Hosting site: `vuatoi-price`.
 
-Đã cấu hình: Firestore Standard tại `asia-southeast1`, Google Provider, Gmail Admin đầu tiên `cmavuatoilyson@gmail.com`, authorized domains local/Hosting/domain chính, Security Rules production và custom-domain binding.
+Đã cấu hình: Firestore Standard tại `asia-southeast1`, Google Provider, Gmail Admin đầu tiên `cmavuatoilyson@gmail.com`, authorized domains local/Hosting/domain chính/Vercel, Security Rules production và custom-domain binding. Bản Vercel công khai: https://vuatoi-price.vercel.app.
 
 ## DNS cần thay đổi
 
@@ -21,7 +21,7 @@ Trạng thái hiện tại là `HOST_MISMATCH`, `OWNERSHIP_MISSING`, certificate
 
 Build từ `.env.local` đã được cấu hình. Preview và production dùng cùng project/database; không nhập dữ liệu giả vào danh sách sản phẩm thực tế.
 
-Bản preview: https://vuatoi-price--review-jpsyrv9r.web.app — hết hạn lúc 16:50 ngày 10/10/2026 (giờ Việt Nam). Bản ứng dụng mới hiện ở channel review theo phạm vi “chuẩn bị deploy”; release live hiện có chưa được cập nhật.
+Bản Firebase Hosting preview: https://vuatoi-price--review-jpsyrv9r.web.app — hết hạn lúc 16:50 ngày 10/10/2026 (giờ Việt Nam). Firebase Hosting live chưa được cập nhật. Bản ứng dụng mới đã được deploy production trên Vercel tại https://vuatoi-price.vercel.app, không yêu cầu tài khoản Vercel để xem.
 
 ```powershell
 node node_modules/vite/bin/vite.js build
@@ -33,7 +33,8 @@ Nếu cần cập nhật Rules, chạy `node node_modules/firebase-tools/lib/bin
 ## Kiểm tra sau go-live
 
 - HTTPS `price.vuatoi.com.vn`, route trực tiếp `/admin/products` và `/admin/admins`.
-- Home tải Firestore, tìm/chọn sản phẩm, nhiều mục, đổi số lượng, tổng và realtime.
+- Home tải Firestore, tìm/chọn sản phẩm trong một mục, đổi số lượng, chiết khấu, bấm Tính tổng để lưu lịch sử và Nhập lại từ 0.
+- Admin Lịch sử chọn giữ bản ghi 3/7/10/30 ngày (mặc định 7); bản ghi quá hạn được dọn khi Admin mở trang hoặc đổi cài đặt.
 - Google Login của Gmail Admin, Gmail ngoài danh sách bị chặn.
 - Thêm/sửa/ngừng bán/bật lại sản phẩm; thêm/tắt/xóa Gmail khác.
 - Console không có lỗi nghiêm trọng; layout mobile và desktop.
