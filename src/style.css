@@ -675,14 +675,6 @@ label {
   overflow-wrap: anywhere;
   white-space: normal;
 }
-.add-section {
-  width: 100%;
-  margin: 20px 0 24px;
-  background: #f0f3e9;
-  border: 1px dashed #b6c7a4;
-  color: var(--green);
-  padding: 16px;
-}
 .grand-total {
   display: flex;
   flex-wrap: wrap;
@@ -759,6 +751,26 @@ label {
   font-size: 18px;
   font-variant-numeric: tabular-nums;
 }
+.calculate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.calculate-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 46px;
+  min-width: 150px;
+}
+.calculation-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 12px 0 0;
+}
 .total-icon {
   display: grid;
   place-items: center;
@@ -825,30 +837,6 @@ label {
   font-size: clamp(22px, 3vw, 30px);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
-}
-.save-history {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  margin-top: 20px;
-  padding: 22px 26px;
-}
-.save-history h2 {
-  font-size: 17px;
-  margin: 0 0 6px;
-}
-.save-history p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 0;
-}
-.save-history button {
-  flex-shrink: 0;
-}
-.save-history + .notice {
-  margin-top: 16px;
 }
 footer {
   max-width: 1080px;
@@ -982,6 +970,46 @@ footer span {
 }
 .history-panel .catalog-heading p {
   margin: 6px 0 0;
+}
+.history-settings {
+  align-items: end;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.history-settings h3 {
+  font-size: 16px;
+  margin: 0 0 7px;
+}
+.history-settings p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+.history-settings form {
+  align-items: end;
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+}
+.history-settings label {
+  color: var(--muted);
+  display: grid;
+  font-size: 11px;
+  gap: 7px;
+}
+.history-settings select {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 42px;
+  min-width: 126px;
+}
+.history-settings button {
+  min-height: 42px;
+  white-space: nowrap;
 }
 .history-search input {
   background: white;
@@ -1292,10 +1320,6 @@ td.actions .icon {
     background: #e6edda;
     color: var(--green);
   }
-  .add-section:hover {
-    background: #e8efdc !important;
-    border-color: #8ca971;
-  }
   .picker-option:hover {
     background: #f0f5e8 !important;
   }
@@ -1323,9 +1347,13 @@ td.actions .icon {
   }
 }
 @media (max-width: 700px) {
-  .save-history {
+  .history-settings,
+  .history-settings form {
     align-items: stretch;
     flex-direction: column;
+  }
+  .history-settings form {
+    flex-shrink: 1;
   }
   .history-entry summary {
     align-items: flex-start;
@@ -1525,9 +1553,8 @@ td.actions .icon {
   .section-total strong {
     font-size: 20px;
   }
-  .add-section {
-    padding: 14px;
-    margin: 18px 0 20px;
+  .calculate-actions button {
+    flex: 1;
   }
   .grand-total {
     padding: 18px;

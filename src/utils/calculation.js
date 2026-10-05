@@ -36,8 +36,10 @@ export const snapshotCalculation = (
   );
   if (lineCount === 0)
     throw new Error("Hãy thêm sản phẩm trước khi lưu lịch sử.");
-  if (entries.length > 20 || lineCount > 100)
-    throw new Error("Mỗi lần lưu tối đa 20 mục và 100 dòng sản phẩm.");
+  if (entries.length !== 1 || lineCount > 100)
+    throw new Error(
+      "Mỗi lần tính chỉ dùng một mục và tối đa 100 dòng sản phẩm.",
+    );
   const retailSubtotal = entries.reduce(
     (sum, section) =>
       sum +

@@ -5,12 +5,14 @@ import {
   orderBy,
   limit,
   onSnapshot,
+  getDocsFromServer,
   doc,
   addDoc,
   setDoc,
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 export const normalizeEmail = (value) => value.trim().toLowerCase();
@@ -85,3 +87,37 @@ export const watchCalculations = (next, error) =>
     (snapshot) => next(snapshot.docs.map((d) => ({ ...d.data(), id: d.id }))),
     error,
   );
+
+export const watchHistorySettings = (next, error) =>
+  onSnapshot(
+    doc(db, "settings", "history"),
+    (snapshot) => next(snapshot.exists() ? snapshot.data().retentionDays : 7),
+    error,
+  );
+
+export const saveHistorySettings = (retentionDays) =>
+  setDoc(doc(db, "settings", "history"), {
+    retentionDays,
+    updatedAt: serverTimestamp(),
+  });
+
+export const deleteExpiredCalculations = async (retentionDays) => {
+  // Cleanup runs while an Admin has the history page open. A small cushion
+  // keeps the client clock from requesting deletion before the server cutoff.
+  const cutoff = Timestamp.fromMillis(
+    Date.now() - retentionDays * 24 * 60 * 60 * 1000 - 5 * 60 * 1000,
+  );
+  let deleted = 0;
+  while (true) {
+    const expired = await getDocsFromServer(
+      query(
+        collection(db, "calculations"),
+        where("createdAt", "<=", cutoff),
+        limit(20),
+      ),
+    );
+    if (expired.empty) return deleted;
+    await Promise.all(expired.docs.map((entry) => deleteDoc(entry.ref)));
+    deleted += expired.size;
+  }
+};

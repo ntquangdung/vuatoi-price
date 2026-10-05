@@ -23,3 +23,15 @@ test("saved history preserves products, quantities, retail discount and dealer t
   products[0].price = 300000;
   assert.equal(snapshot.sections[0].items[0].price, 250000);
 });
+
+test("a calculation accepts only one section", () => {
+  const sections = [
+    { name: "Mục 1", items: [{ productId: "a", quantity: 1 }] },
+    { name: "Mục 2", items: [{ productId: "a", quantity: 1 }] },
+  ];
+  const products = [{ id: "a", name: "Tỏi", unit: "kg", price: 100000 }];
+  assert.throws(
+    () => snapshotCalculation(sections, products, "percent", 0),
+    /chỉ dùng một mục/,
+  );
+});

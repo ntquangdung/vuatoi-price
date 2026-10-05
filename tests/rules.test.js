@@ -214,4 +214,54 @@ test("Signed-in users may save calculations, while only Admin can read history",
   await assertFails(
     updateDoc(doc(viewerDb, "calculations", "saved"), { total: 0 }),
   );
+  await assertFails(
+    setDoc(doc(viewerDb, "calculations", "multiple-sections"), {
+      ...entry,
+      sections: [...entry.sections, ...entry.sections],
+    }),
+  );
+});
+
+test("Admin chooses 3, 7, 10 or 30 days and deletes only expired history", async () => {
+  const adminDb = env
+    .authenticatedContext("owner", token("owner@gmail.com"))
+    .firestore();
+  const viewerDb = env
+    .authenticatedContext("viewer", token("viewer@gmail.com"))
+    .firestore();
+  const settings = doc(adminDb, "settings", "history");
+  await assertFails(getDoc(doc(viewerDb, "settings", "history")));
+  await assertFails(
+    setDoc(doc(viewerDb, "settings", "history"), {
+      retentionDays: 3,
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    setDoc(settings, { retentionDays: 2, updatedAt: serverTimestamp() }),
+  );
+  await assertSucceeds(
+    setDoc(settings, { retentionDays: 3, updatedAt: serverTimestamp() }),
+  );
+  await assertSucceeds(getDoc(settings));
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "calculations", "four-days-old"), {
+      createdAt: Timestamp.fromMillis(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    });
+    await setDoc(doc(db, "calculations", "new"), {
+      createdAt: Timestamp.now(),
+    });
+  });
+  await assertFails(deleteDoc(doc(viewerDb, "calculations", "four-days-old")));
+  await assertFails(deleteDoc(doc(adminDb, "calculations", "new")));
+  await assertSucceeds(
+    deleteDoc(doc(adminDb, "calculations", "four-days-old")),
+  );
+
+  await assertSucceeds(
+    setDoc(settings, { retentionDays: 30, updatedAt: serverTimestamp() }),
+  );
+  await assertFails(deleteDoc(doc(adminDb, "calculations", "new")));
 });

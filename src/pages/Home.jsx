@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { auth, configured, firebaseSetupError } from "../firebase/config";
 import { login } from "../firebase/auth";
 import { saveCalculation, watchProducts } from "../services/data";
 import { snapshotCalculation } from "../utils/calculation";
 import {
-  dealerSectionTotal,
   discountAmount,
   formatMoney,
   quantityValue,
@@ -13,9 +12,9 @@ import {
 import ProductSearch from "../components/ProductSearch";
 import Icon from "../components/Icon";
 import useOnline from "../hooks/useOnline";
-const newSection = (n) => ({
+const newSection = () => ({
   id: crypto.randomUUID(),
-  name: `Mục ${n}`,
+  name: "Mục 1",
   items: [],
 });
 export default function Home() {
@@ -23,14 +22,16 @@ export default function Home() {
   const [products, setProducts] = useState([]),
     [loading, setLoading] = useState(configured),
     [error, setError] = useState("");
-  const [sections, setSections] = useState(() => [newSection(1)]),
-    [nextNumber, setNextNumber] = useState(2),
+  const [sections, setSections] = useState(() => [newSection()]),
     [showDealerPrice, setShowDealerPrice] = useState(false),
     [discountType, setDiscountType] = useState("percent"),
     [discountValue, setDiscountValue] = useState(""),
+    [calculated, setCalculated] = useState(null),
+    [saved, setSaved] = useState(false),
     [saving, setSaving] = useState(false),
     [saveMessage, setSaveMessage] = useState(""),
     [saveError, setSaveError] = useState("");
+  const revision = useRef(0);
   useEffect(() => {
     if (!configured) return;
     return watchProducts(
@@ -49,7 +50,11 @@ export default function Home() {
     );
   }, []);
   useEffect(() => {
+    revision.current += 1;
     setSaveMessage("");
+    setSaveError("");
+    setCalculated(null);
+    setSaved(false);
   }, [sections, products, discountType, discountValue]);
   const update = (id, fn) =>
     setSections((ss) => ss.map((s) => (s.id === id ? fn(s) : s)));
@@ -58,12 +63,6 @@ export default function Home() {
       ...s,
       items: s.items.map((i) => (i.id === itemId ? { ...i, quantity } : i)),
     }));
-  const dealerTotals = sections.map((s) =>
-    dealerSectionTotal(s.items, products),
-  );
-  const grandDealerTotal = dealerTotals.every((total) => total !== null)
-    ? dealerTotals.reduce((sum, total) => sum + total, 0)
-    : null;
   const formatDealerTotal = (total) =>
     total === null ? "Chưa đủ giá" : formatMoney(total);
   const retailSubtotal = sections.reduce(
@@ -71,16 +70,9 @@ export default function Home() {
     0,
   );
   const discount = discountAmount(retailSubtotal, discountType, discountValue);
-  const retailTotal = retailSubtotal - discount;
-  const saveHistory = async () => {
+  const calculateAndSave = async () => {
     setSaveMessage("");
     setSaveError("");
-    if (!online) {
-      setSaveError(
-        "Đang mất kết nối mạng. Vui lòng kết nối lại để lưu lần tính.",
-      );
-      return;
-    }
     let snapshot;
     try {
       snapshot = snapshotCalculation(
@@ -93,12 +85,22 @@ export default function Home() {
       setSaveError(error.message);
       return;
     }
+    setCalculated(snapshot);
+    setSaved(false);
+    const currentRevision = revision.current;
+    if (!online) {
+      setSaveError("Đã tính tổng nhưng chưa lưu vì đang mất kết nối mạng.");
+      return;
+    }
     setSaving(true);
     try {
       const user = auth.currentUser || (await login()).user;
       if (!user?.email) throw new Error("missing-email");
       await saveCalculation(snapshot, user.email);
-      setSaveMessage("Đã lưu lần tính. Admin có thể xem trong Lịch sử.");
+      if (revision.current === currentRevision) {
+        setSaved(true);
+        setSaveMessage("Đã tính tổng và lưu vào lịch sử cho Admin kiểm tra.");
+      }
     } catch (error) {
       const messages = {
         "auth/popup-closed-by-user":
@@ -111,12 +113,23 @@ export default function Home() {
           "Không thể kết nối Google/Firebase. Vui lòng thử lại.",
         "permission-denied": "Tài khoản Google chưa được phép lưu lịch sử.",
       };
-      setSaveError(
-        messages[error.code] || "Không thể lưu lần tính. Vui lòng thử lại.",
-      );
+      if (revision.current === currentRevision)
+        setSaveError(
+          messages[error.code] || "Không thể lưu lần tính. Vui lòng thử lại.",
+        );
     } finally {
       setSaving(false);
     }
+  };
+  const resetCalculation = () => {
+    setSections([newSection()]);
+    setDiscountType("percent");
+    setDiscountValue("");
+    setShowDealerPrice(false);
+    setCalculated(null);
+    setSaved(false);
+    setSaveMessage("");
+    setSaveError("");
   };
   return (
     <main className="calculator-page">
@@ -126,7 +139,7 @@ export default function Home() {
           <h1>
             Tính giá sản phẩm<span className="title-dot">.</span>
           </h1>
-          <p>Chọn sản phẩm, nhập số lượng. Tổng tiền tự cập nhật.</p>
+          <p>Chọn sản phẩm, nhập số lượng rồi bấm Tính tổng.</p>
         </div>
         <div className="intro-actions">
           {!loading && configured && !error && online && (
@@ -208,16 +221,6 @@ export default function Home() {
                 />
                 <small>Nhấn vào tên để đổi tên mục</small>
               </div>
-              <button
-                className="quiet remove-section"
-                onClick={() =>
-                  setSections((ss) => ss.filter((v) => v.id !== s.id))
-                }
-                aria-label={`Xóa ${s.name || "mục"}`}
-              >
-                <Icon name="trash" />
-                <span>Xóa mục</span>
-              </button>
             </div>
             {!s.items.length && (
               <div className="section-empty">
@@ -375,34 +378,26 @@ export default function Home() {
                 }))
               }
             />
-            <div className="section-total">
-              <div className="total-pair">
-                <span>
-                  Tổng {showDealerPrice ? "bán lẻ " : ""}
-                  {s.name || `Mục ${index + 1}`}
-                </span>
-                <strong>{formatMoney(sectionTotal(s.items, products))}</strong>
-              </div>
-              {showDealerPrice && (
-                <div className="total-pair dealer-total-pair">
-                  <span>Tổng đại lý {s.name || `Mục ${index + 1}`}</span>
-                  <strong>{formatDealerTotal(dealerTotals[index])}</strong>
+            {calculated && (
+              <div className="section-total">
+                <div className="total-pair">
+                  <span>
+                    Tổng {showDealerPrice ? "bán lẻ " : ""}
+                    {s.name || `Mục ${index + 1}`}
+                  </span>
+                  <strong>{formatMoney(calculated.retailSubtotal)}</strong>
                 </div>
-              )}
-            </div>
+                {showDealerPrice && (
+                  <div className="total-pair dealer-total-pair">
+                    <span>Tổng đại lý {s.name || `Mục ${index + 1}`}</span>
+                    <strong>{formatDealerTotal(calculated.dealerTotal)}</strong>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         ))}
       </div>
-      <button
-        className="add-section"
-        onClick={() => {
-          setSections((s) => [...s, newSection(nextNumber)]);
-          setNextNumber((n) => n + 1);
-        }}
-      >
-        <Icon name="plus" />
-        Tạo mục mới
-      </button>
       <div className="discount-card card">
         <div>
           <p className="eyebrow">ƯU ĐÃI</p>
@@ -440,9 +435,35 @@ export default function Home() {
           </label>
         </div>
         <div className="discount-result" aria-live="polite">
-          <span>Số tiền giảm</span>
-          <strong>-{formatMoney(discount)}</strong>
+          <span>Dự kiến giảm</span>
+          <strong>
+            {discount > 0 ? `-${formatMoney(discount)}` : formatMoney(0)}
+          </strong>
         </div>
+      </div>
+      <div className="calculate-actions">
+        <button
+          type="button"
+          disabled={saving || saved || !configured || loading}
+          onClick={calculateAndSave}
+        >
+          <Icon name="calculator" />
+          {saving
+            ? "Đang lưu…"
+            : calculated && !saved
+              ? "Thử lưu lại"
+              : "Tính tổng"}
+        </button>
+        {calculated && (
+          <button
+            type="button"
+            className="secondary"
+            disabled={saving}
+            onClick={resetCalculation}
+          >
+            Nhập lại từ 0
+          </button>
+        )}
       </div>
       <div className="grand-total">
         <span className="total-icon">
@@ -450,47 +471,42 @@ export default function Home() {
         </span>
         <div className="grand-total-label">
           <span>
-            {discount > 0
+            {calculated?.discountAmount > 0
               ? "TỔNG SAU CHIẾT KHẤU"
               : showDealerPrice
                 ? "TỔNG BÁN LẺ"
                 : "TỔNG TẤT CẢ"}
           </span>
           <small>
-            {sections.length} mục ·{" "}
-            {sections.reduce((n, s) => n + s.items.length, 0)} dòng sản phẩm
+            {calculated
+              ? `${calculated.lineCount} dòng sản phẩm`
+              : "Chưa tính tổng"}
           </small>
         </div>
-        <strong>{formatMoney(retailTotal)}</strong>
-        {discount > 0 && (
+        <strong>{formatMoney(calculated?.total ?? 0)}</strong>
+        {calculated?.discountAmount > 0 && (
           <div className="grand-discount-breakdown">
-            <span>Tổng bán lẻ trước giảm: {formatMoney(retailSubtotal)}</span>
-            <span>Chiết khấu: -{formatMoney(discount)}</span>
+            <span>
+              Tổng bán lẻ trước giảm: {formatMoney(calculated.retailSubtotal)}
+            </span>
+            <span>Chiết khấu: -{formatMoney(calculated.discountAmount)}</span>
           </div>
         )}
         {showDealerPrice && (
           <div className="grand-dealer-total">
             <span>TỔNG ĐẠI LÝ</span>
-            <strong>{formatDealerTotal(grandDealerTotal)}</strong>
+            <strong>
+              {calculated
+                ? formatDealerTotal(calculated.dealerTotal)
+                : formatMoney(0)}
+            </strong>
           </div>
         )}
       </div>
-      <div className="save-history card">
-        <div>
-          <h2>Lưu lần tính</h2>
-          <p>
-            Lưu danh sách sản phẩm, số lượng và chiết khấu để Admin kiểm tra
-            lại. Cần đăng nhập Google khi lưu.
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={saving || !configured || loading}
-          onClick={saveHistory}
-        >
-          {saving ? "Đang lưu…" : "Lưu lần tính"}
-        </button>
-      </div>
+      <p className="calculation-hint">
+        Bấm Tính tổng để lưu lần tính vào lịch sử. Bạn sẽ đăng nhập Google nếu
+        chưa đăng nhập.
+      </p>
       {saveMessage && (
         <p role="status" className="notice">
           {saveMessage}
