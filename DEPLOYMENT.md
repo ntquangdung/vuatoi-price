@@ -2,13 +2,13 @@
 
 URL production: https://vuatoi-price.vercel.app/ · Vercel project: `vua-toi/vuatoi-price` · Firebase project: `vuatoi-price`.
 
-Ngày 06/10/2026 đã cập nhật FE production lên Vercel và Firestore Security Rules lên Firebase. Vercel deployment `dpl_8hzsQsqisSkMAy3pFUNzS1Y7RaqV` ở trạng thái Ready và alias đúng URL trên. Home và `/admin/history` đều trả HTTP 200; không bật lớp đăng nhập Vercel. Firebase Auth cho phép `vuatoi-price.vercel.app`.
+Ngày 06/10/2026 đã cập nhật FE production lên Vercel và Firestore Security Rules lên Firebase. Vercel deployment `dpl_85XqNbY7QNWXGYu9MSx6k2iKJqCj` ở trạng thái Ready và alias đúng URL trên. Home và `/admin/history` đều trả HTTP 200; không bật lớp đăng nhập Vercel. Firebase Auth cho phép `vuatoi-price.vercel.app`.
 
 ## Dữ liệu và quyền
 
 Dữ liệu production có 29 sản phẩm. Migration đã sao lưu dữ liệu cũ trong `.local-data/` (chỉ trên máy local, được gitignore), chuyển đủ 29 giá đại lý vào `dealerPrices` và xóa trường `dealerPrice` khỏi `products`. Security Rules giới hạn giá đại lý cho Admin hoặc Gmail được Admin cấp trong `/admin/dealers`. Home yêu cầu Google Login; mọi Gmail Google có thể dùng giá bán lẻ, còn giá đại lý phụ thuộc quyền trong Firestore.
 
-Home có địa chỉ dưới tên mục và lựa chọn một trong sáu phương thức thanh toán bên dưới. Khi tính tổng, hai thông tin được lưu cùng bản chụp đơn hàng. Admin xem lại chúng trong Lịch sử và xuất toàn bộ các bản ghi còn lưu thành `.xlsx`. File có ba dòng thông tin công ty ở góc trái trên cùng, tiếp theo là từng lần tính, sản phẩm, chiết khấu, tổng bán lẻ và tổng đại lý. Bản ghi cũ không có địa chỉ/thanh toán sẽ hiển thị rõ "Chưa nhập"/"Chưa chọn"; Rules vẫn cho phép định dạng cũ trong thời gian chuyển phiên bản.
+Home dùng tên mục làm thông tin khách hàng, có địa chỉ và một trong sáu phương thức thanh toán bên dưới. Khi tính tổng, thông tin này được lưu cùng bản chụp đơn hàng. Trong Lịch sử, Admin mở từng bản ghi để xuất một thông báo đơn hàng `.xlsx` riêng. File có ba dòng thông tin công ty ở góc trái trên cùng, tiếp theo là khách hàng, địa chỉ, thanh toán, sản phẩm, chiết khấu và tổng tiền; không có Gmail hay mã lưu nội bộ. Chỉ khi Gmail đã lưu lần tính hiện còn quyền xem giá đại lý và bản ghi có đủ giá đại lý, file mới thêm cột giá đại lý và tổng đại lý bên cạnh giá bán lẻ. Bản ghi cũ không có địa chỉ/thanh toán sẽ hiển thị rõ "Chưa nhập"/"Chưa chọn"; Rules vẫn cho phép định dạng cũ.
 
 ## Publish production
 
@@ -33,6 +33,6 @@ Các lệnh deploy cần Firebase CLI đăng nhập `cmavuatoilyson@gmail.com` v
 - Thêm/sửa/ngừng bán/bật lại sản phẩm; thêm/tắt/xóa Gmail khác.
 - Console không có lỗi nghiêm trọng; layout mobile và desktop.
 
-Đã kiểm tra 8/8 bài test tính toán/XLSX, 8/8 nhóm Security Rules, build Vite, tạo XLSX từ bundle production trong Chrome và Vercel build production. Home/Admin qua HTTPS trả HTTP 200. Chưa kiểm tra thao tác tải file bằng Gmail Admin trên URL production sau lần deploy này.
+Đã kiểm tra 9/9 bài test tính toán/XLSX, 8/8 nhóm Security Rules và build Vite. Bài test mở lại file XLSX cho đơn bán lẻ và đơn có quyền đại lý, xác nhận Gmail, mã lưu và giá đại lý không xuất hiện trong file bán lẻ. Cần kiểm tra thao tác tải file bằng Gmail Admin trên URL production sau lần deploy này.
 
 Binding domain cũ `price.vuatoi.com.vn` ở Firebase Hosting còn `HOST_MISMATCH`; nó không ảnh hưởng URL Vercel và không thuộc lần triển khai này.

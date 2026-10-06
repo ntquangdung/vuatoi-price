@@ -13,10 +13,13 @@ export const snapshotCalculation = (
 ) => {
   const entries = sections
     .map((section) => {
-      if (section.items.length > 0 && !paymentMethods.includes(section.paymentMethod))
+      if (
+        section.items.length > 0 &&
+        !paymentMethods.includes(section.paymentMethod)
+      )
         throw new Error("Hãy chọn phương thức thanh toán trước khi tính tổng.");
       return {
-        name: section.name.trim().slice(0, 100) || "Mục chưa đặt tên",
+        name: section.name.trim().slice(0, 100) || "Thông tin khách hàng",
         address: (section.address || "").trim().slice(0, 300),
         paymentMethod: section.paymentMethod,
         items: section.items.map((item) => {

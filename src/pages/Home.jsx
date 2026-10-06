@@ -22,7 +22,7 @@ import useOnline from "../hooks/useOnline";
 import { paymentMethods } from "../utils/paymentMethods";
 const newSection = () => ({
   id: crypto.randomUUID(),
-  name: "Mục 1",
+  name: "Thông tin khách hàng",
   address: "",
   paymentMethod: "",
   items: [],
@@ -389,7 +389,7 @@ export default function Home() {
           <section
             className="card price-section"
             key={s.id}
-            aria-label={s.name || `Mục ${index + 1}`}
+            aria-label={s.name || "Thông tin khách hàng"}
           >
             <div className="section-heading">
               <span className="section-number">
@@ -397,14 +397,18 @@ export default function Home() {
               </span>
               <div className="section-name">
                 <input
-                  aria-label={`Tên mục ${index + 1}`}
+                  aria-label="Thông tin khách hàng"
                   value={s.name}
-                  placeholder={`Mục ${index + 1}`}
+                  placeholder="Nhập tên khách hàng"
+                  onFocus={(e) => {
+                    if (e.target.value === "Thông tin khách hàng")
+                      e.target.select();
+                  }}
                   onChange={(e) =>
                     update(s.id, (v) => ({ ...v, name: e.target.value }))
                   }
                 />
-                <small>Nhấn vào tên để đổi tên mục</small>
+                <small>Nhấn vào để nhập tên khách hàng</small>
               </div>
             </div>
             <div className="section-details">
@@ -599,15 +603,12 @@ export default function Home() {
             {calculated && (
               <div className="section-total">
                 <div className="total-pair">
-                  <span>
-                    Tổng {dealerVisible ? "bán lẻ " : ""}
-                    {s.name || `Mục ${index + 1}`}
-                  </span>
+                  <span>Tổng bán lẻ</span>
                   <strong>{formatMoney(calculated.retailSubtotal)}</strong>
                 </div>
                 {dealerVisible && (
                   <div className="total-pair dealer-total-pair">
-                    <span>Tổng đại lý {s.name || `Mục ${index + 1}`}</span>
+                    <span>Tổng đại lý</span>
                     <strong>{formatDealerTotal(calculated.dealerTotal)}</strong>
                   </div>
                 )}

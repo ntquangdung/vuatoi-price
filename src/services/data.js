@@ -4,9 +4,9 @@ import {
   where,
   orderBy,
   limit,
-  startAfter,
   onSnapshot,
   getDocsFromServer,
+  getDocFromServer,
   doc,
   addDoc,
   setDoc,
@@ -149,22 +149,17 @@ export const watchCalculations = (next, error) =>
     error,
   );
 
-export const getAllCalculations = async () => {
-  const entries = [];
-  let lastDocument = null;
-  while (true) {
-    const parts = [
-      collection(db, "calculations"),
-      orderBy("createdAt", "desc"),
-    ];
-    if (lastDocument) parts.push(startAfter(lastDocument));
-    const page = await getDocsFromServer(query(...parts, limit(300)));
-    entries.push(
-      ...page.docs.map((entry) => ({ ...entry.data(), id: entry.id })),
-    );
-    if (page.size < 300) return entries;
-    lastDocument = page.docs.at(-1);
-  }
+export const canExportDealerPricesForEmail = async (email) => {
+  if (!email) return false;
+  const normalized = normalizeEmail(email);
+  const [admin, viewer] = await Promise.all([
+    getDocFromServer(doc(db, "admins", normalized)),
+    getDocFromServer(doc(db, "dealerViewers", normalized)),
+  ]);
+  return (
+    (admin.exists() && admin.data().active === true) ||
+    (viewer.exists() && viewer.data().active === true)
+  );
 };
 
 export const watchHistorySettings = (next, error) =>

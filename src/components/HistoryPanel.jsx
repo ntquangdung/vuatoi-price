@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  canExportDealerPricesForEmail,
   deleteExpiredCalculations,
-  getAllCalculations,
   saveHistorySettings,
   watchCalculations,
   watchHistorySettings,
@@ -36,9 +36,12 @@ export default function HistoryPanel() {
   const [settingsError, setSettingsError] = useState("");
   const [settingsMessage, setSettingsMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [exportBusy, setExportBusy] = useState(false);
-  const [exportError, setExportError] = useState("");
-  const [exportMessage, setExportMessage] = useState("");
+  const [exportState, setExportState] = useState({
+    id: null,
+    busy: false,
+    error: "",
+    message: "",
+  });
 
   useEffect(() => {
     const unsubscribe = watchCalculations(
@@ -114,19 +117,17 @@ export default function HistoryPanel() {
     }
   };
 
-  const exportExcel = async () => {
-    setExportBusy(true);
-    setExportError("");
-    setExportMessage("");
+  const exportOrder = async (entry) => {
+    setExportState({ id: entry.id, busy: true, error: "", message: "" });
     try {
-      const allEntries = await getAllCalculations();
-      if (!allEntries.length) {
-        setExportError("Chưa có lịch sử để xuất Excel.");
-        return;
-      }
-      const [{ default: ExcelJS }, { buildHistoryWorkbook }] =
-        await Promise.all([import("exceljs"), import("../utils/historyExcel")]);
-      const workbook = buildHistoryWorkbook(allEntries, ExcelJS);
+      const dealerAuthorized = await canExportDealerPricesForEmail(
+        entry.savedBy,
+      );
+      const [{ default: ExcelJS }, { buildOrderWorkbook }] = await Promise.all([
+        import("exceljs"),
+        import("../utils/orderExcel"),
+      ]);
+      const workbook = buildOrderWorkbook(entry, ExcelJS, dealerAuthorized);
       const bytes = await workbook.xlsx.writeBuffer();
       const url = URL.createObjectURL(
         new Blob([bytes], {
@@ -135,18 +136,36 @@ export default function HistoryPanel() {
       );
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `lich-su-tinh-gia-vua-toi-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const date = entry.createdAt?.toDate?.() || new Date();
+      const stamp = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+        .format(date)
+        .replace(/[ :]/g, "-");
+      anchor.download = `thong-bao-don-hang-${stamp}.xlsx`;
       document.body.append(anchor);
       anchor.click();
       anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-      setExportMessage(`Đã xuất ${allEntries.length} lần tính vào Excel.`);
+      setExportState({
+        id: entry.id,
+        busy: false,
+        error: "",
+        message: "Đã xuất thông báo đơn hàng.",
+      });
     } catch {
-      setExportError(
-        "Không thể xuất Excel. Vui lòng kiểm tra kết nối rồi thử lại.",
-      );
-    } finally {
-      setExportBusy(false);
+      setExportState({
+        id: entry.id,
+        busy: false,
+        error: "Không thể xuất đơn này. Vui lòng kiểm tra kết nối rồi thử lại.",
+        message: "",
+      });
     }
   };
 
@@ -172,30 +191,11 @@ export default function HistoryPanel() {
         <div>
           <h2>Lịch sử tính giá</h2>
           <p className="muted">
-            Hiển thị 100 lần gần nhất · Excel xuất toàn bộ lịch sử còn lưu
+            Hiển thị 100 lần gần nhất · Mở từng lần tính để xuất đơn riêng
           </p>
         </div>
-        <div className="history-header-actions">
-          <span className="muted">{filtered.length} lần tính</span>
-          <button
-            type="button"
-            onClick={exportExcel}
-            disabled={exportBusy || loading || Boolean(error)}
-          >
-            {exportBusy ? "Đang xuất…" : "Xuất Excel"}
-          </button>
-        </div>
+        <span className="muted">{filtered.length} lần tính</span>
       </div>
-      {exportError && (
-        <p role="alert" className="notice error">
-          {exportError}
-        </p>
-      )}
-      {exportMessage && (
-        <p role="status" className="notice">
-          {exportMessage}
-        </p>
-      )}
       <div className="card history-settings">
         <div>
           <h3>Thời gian lưu lịch sử</h3>
@@ -339,6 +339,28 @@ export default function HistoryPanel() {
                       : formatMoney(entry.dealerTotal)}
                   </strong>
                 </div>
+              </div>
+              <div className="history-export">
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={exportState.busy}
+                  onClick={() => exportOrder(entry)}
+                >
+                  {exportState.busy && exportState.id === entry.id
+                    ? "Đang xuất…"
+                    : "Xuất Excel đơn này"}
+                </button>
+                {exportState.id === entry.id && exportState.error && (
+                  <p role="alert" className="notice error">
+                    {exportState.error}
+                  </p>
+                )}
+                {exportState.id === entry.id && exportState.message && (
+                  <p role="status" className="notice">
+                    {exportState.message}
+                  </p>
+                )}
               </div>
             </div>
           </details>

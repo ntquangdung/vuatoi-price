@@ -354,7 +354,9 @@ h2 {
   font-size: 12px;
   font-weight: 650;
 }
-.section-details label:last-child { max-width: 360px; }
+.section-details label:last-child {
+  max-width: 360px;
+}
 .section-details input,
 .section-details select {
   min-height: 44px;
@@ -1082,14 +1084,18 @@ footer span {
 .history-panel .catalog-heading p {
   margin: 6px 0 0;
 }
-.history-header-actions {
+.history-export {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 18px;
 }
-.history-header-actions button {
+.history-export button {
   min-height: 42px;
-  white-space: nowrap;
+}
+.history-export .notice {
+  margin: 0;
 }
 .history-settings {
   align-items: end;
@@ -1481,9 +1487,6 @@ td.actions .icon {
     align-items: stretch;
     flex-direction: column;
     gap: 12px;
-  }
-  .history-header-actions {
-    justify-content: space-between;
   }
   .history-settings,
   .history-settings form {
