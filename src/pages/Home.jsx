@@ -19,9 +19,12 @@ import {
 import ProductSearch from "../components/ProductSearch";
 import Icon from "../components/Icon";
 import useOnline from "../hooks/useOnline";
+import { paymentMethods } from "../utils/paymentMethods";
 const newSection = () => ({
   id: crypto.randomUUID(),
   name: "Mục 1",
+  address: "",
+  paymentMethod: "",
   items: [],
 });
 export default function Home() {
@@ -403,6 +406,39 @@ export default function Home() {
                 />
                 <small>Nhấn vào tên để đổi tên mục</small>
               </div>
+            </div>
+            <div className="section-details">
+              <label>
+                Địa chỉ
+                <input
+                  type="text"
+                  maxLength="300"
+                  value={s.address}
+                  placeholder="Nhập địa chỉ giao hàng hoặc khách hàng"
+                  onChange={(e) =>
+                    update(s.id, (v) => ({ ...v, address: e.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                Phương thức thanh toán
+                <select
+                  value={s.paymentMethod}
+                  onChange={(e) =>
+                    update(s.id, (v) => ({
+                      ...v,
+                      paymentMethod: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Chọn phương thức thanh toán</option>
+                  {paymentMethods.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             {!s.items.length && (
               <div className="section-empty">

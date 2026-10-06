@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   deleteExpiredCalculations,
+  getAllCalculations,
   saveHistorySettings,
   watchCalculations,
   watchHistorySettings,
@@ -35,6 +36,9 @@ export default function HistoryPanel() {
   const [settingsError, setSettingsError] = useState("");
   const [settingsMessage, setSettingsMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const [exportMessage, setExportMessage] = useState("");
 
   useEffect(() => {
     const unsubscribe = watchCalculations(
@@ -110,6 +114,42 @@ export default function HistoryPanel() {
     }
   };
 
+  const exportExcel = async () => {
+    setExportBusy(true);
+    setExportError("");
+    setExportMessage("");
+    try {
+      const allEntries = await getAllCalculations();
+      if (!allEntries.length) {
+        setExportError("Chưa có lịch sử để xuất Excel.");
+        return;
+      }
+      const [{ default: ExcelJS }, { buildHistoryWorkbook }] =
+        await Promise.all([import("exceljs"), import("../utils/historyExcel")]);
+      const workbook = buildHistoryWorkbook(allEntries, ExcelJS);
+      const bytes = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(
+        new Blob([bytes], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+      );
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `lich-su-tinh-gia-vua-toi-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+      setExportMessage(`Đã xuất ${allEntries.length} lần tính vào Excel.`);
+    } catch {
+      setExportError(
+        "Không thể xuất Excel. Vui lòng kiểm tra kết nối rồi thử lại.",
+      );
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
   const term = search.trim().toLocaleLowerCase("vi");
   const filtered = entries.filter(
     (entry) =>
@@ -118,6 +158,8 @@ export default function HistoryPanel() {
       entry.sections?.some(
         (section) =>
           section.name?.toLocaleLowerCase("vi").includes(term) ||
+          section.address?.toLocaleLowerCase("vi").includes(term) ||
+          section.paymentMethod?.toLocaleLowerCase("vi").includes(term) ||
           section.items?.some((item) =>
             item.name?.toLocaleLowerCase("vi").includes(term),
           ),
@@ -129,10 +171,31 @@ export default function HistoryPanel() {
       <div className="catalog-heading">
         <div>
           <h2>Lịch sử tính giá</h2>
-          <p className="muted">100 lần lưu gần nhất · Chỉ Admin xem được</p>
+          <p className="muted">
+            Hiển thị 100 lần gần nhất · Excel xuất toàn bộ lịch sử còn lưu
+          </p>
         </div>
-        <span className="muted">{filtered.length} lần tính</span>
+        <div className="history-header-actions">
+          <span className="muted">{filtered.length} lần tính</span>
+          <button
+            type="button"
+            onClick={exportExcel}
+            disabled={exportBusy || loading || Boolean(error)}
+          >
+            {exportBusy ? "Đang xuất…" : "Xuất Excel"}
+          </button>
+        </div>
       </div>
+      {exportError && (
+        <p role="alert" className="notice error">
+          {exportError}
+        </p>
+      )}
+      {exportMessage && (
+        <p role="status" className="notice">
+          {exportMessage}
+        </p>
+      )}
       <div className="card history-settings">
         <div>
           <h3>Thời gian lưu lịch sử</h3>
@@ -231,6 +294,13 @@ export default function HistoryPanel() {
               {entry.sections?.map((section, index) => (
                 <div className="history-section" key={`${entry.id}-${index}`}>
                   <h3>{section.name}</h3>
+                  <p className="history-section-detail">
+                    <strong>Địa chỉ:</strong> {section.address || "Chưa nhập"}
+                  </p>
+                  <p className="history-section-detail">
+                    <strong>Thanh toán:</strong>{" "}
+                    {section.paymentMethod || "Chưa chọn"}
+                  </p>
                   {section.items?.map((item, itemIndex) => (
                     <div
                       className="history-item"

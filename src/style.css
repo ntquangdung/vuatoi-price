@@ -340,6 +340,27 @@ h2 {
   padding-left: 5px;
   margin-top: 3px;
 }
+.section-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px 0 20px;
+  border-bottom: 1px solid #edf0e8;
+}
+.section-details label {
+  display: grid;
+  gap: 7px;
+  color: var(--green-dark);
+  font-size: 12px;
+  font-weight: 650;
+}
+.section-details label:last-child { max-width: 360px; }
+.section-details input,
+.section-details select {
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 400;
+}
 input,
 select {
   border: 1px solid #d8e0d4;
@@ -1061,6 +1082,15 @@ footer span {
 .history-panel .catalog-heading p {
   margin: 6px 0 0;
 }
+.history-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.history-header-actions button {
+  min-height: 42px;
+  white-space: nowrap;
+}
 .history-settings {
   align-items: end;
   display: flex;
@@ -1172,6 +1202,16 @@ footer span {
 .history-section h3 {
   font-size: 13px;
   margin: 0 0 9px;
+}
+.history-section-detail {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.history-section-detail strong {
+  color: var(--green-dark);
 }
 .history-item,
 .history-totals > div {
@@ -1437,6 +1477,14 @@ td.actions .icon {
   }
 }
 @media (max-width: 700px) {
+  .history-panel .catalog-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .history-header-actions {
+    justify-content: space-between;
+  }
   .history-settings,
   .history-settings form {
     align-items: stretch;

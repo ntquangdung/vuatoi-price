@@ -3,6 +3,7 @@ import {
   discountAmount,
   quantityValue,
 } from "./currency.js";
+import { paymentMethods } from "./paymentMethods.js";
 
 export const snapshotCalculation = (
   sections,
@@ -11,24 +12,30 @@ export const snapshotCalculation = (
   discountValue,
 ) => {
   const entries = sections
-    .map((section) => ({
-      name: section.name.trim().slice(0, 100) || "Mục chưa đặt tên",
-      items: section.items.map((item) => {
-        const product = products.find((p) => p.id === item.productId);
-        const quantity = quantityValue(item.quantity);
-        if (!product || !Number.isFinite(quantity) || quantity > 1000000)
-          throw new Error(
-            "Có sản phẩm hoặc số lượng không hợp lệ. Vui lòng kiểm tra lại.",
-          );
-        return {
-          name: product.name,
-          unit: product.unit,
-          price: product.price,
-          dealerPrice: product.dealerPrice ?? null,
-          quantity,
-        };
-      }),
-    }))
+    .map((section) => {
+      if (section.items.length > 0 && !paymentMethods.includes(section.paymentMethod))
+        throw new Error("Hãy chọn phương thức thanh toán trước khi tính tổng.");
+      return {
+        name: section.name.trim().slice(0, 100) || "Mục chưa đặt tên",
+        address: (section.address || "").trim().slice(0, 300),
+        paymentMethod: section.paymentMethod,
+        items: section.items.map((item) => {
+          const product = products.find((p) => p.id === item.productId);
+          const quantity = quantityValue(item.quantity);
+          if (!product || !Number.isFinite(quantity) || quantity > 1000000)
+            throw new Error(
+              "Có sản phẩm hoặc số lượng không hợp lệ. Vui lòng kiểm tra lại.",
+            );
+          return {
+            name: product.name,
+            unit: product.unit,
+            price: product.price,
+            dealerPrice: product.dealerPrice ?? null,
+            quantity,
+          };
+        }),
+      };
+    })
     .filter((section) => section.items.length > 0);
   const lineCount = entries.reduce(
     (count, section) => count + section.items.length,

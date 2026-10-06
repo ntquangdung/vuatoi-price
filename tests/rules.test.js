@@ -235,6 +235,8 @@ test("Signed-in users may save calculations, while only Admin can read history",
     sections: [
       {
         name: "Mục 1",
+        address: "450 Nguyễn Lương Bằng",
+        paymentMethod: "Thu COD",
         items: [
           {
             name: "Tỏi",
@@ -258,6 +260,10 @@ test("Signed-in users may save calculations, while only Admin can read history",
   };
   await assertFails(setDoc(doc(publicDb, "calculations", "anonymous"), entry));
   await assertSucceeds(setDoc(doc(viewerDb, "calculations", "saved"), entry));
+  await assertSucceeds(setDoc(doc(viewerDb, "calculations", "legacy-shape"), {
+    ...entry,
+    sections: [{ name: "Mục 1", items: entry.sections[0].items }],
+  }));
   await assertFails(getDoc(doc(viewerDb, "calculations", "saved")));
   await assertSucceeds(getDoc(doc(adminDb, "calculations", "saved")));
   await assertFails(
@@ -273,6 +279,18 @@ test("Signed-in users may save calculations, while only Admin can read history",
     setDoc(doc(viewerDb, "calculations", "multiple-sections"), {
       ...entry,
       sections: [...entry.sections, ...entry.sections],
+    }),
+  );
+  await assertFails(
+    setDoc(doc(viewerDb, "calculations", "bad-payment"), {
+      ...entry,
+      sections: [{ ...entry.sections[0], paymentMethod: "Ngân hàng khác" }],
+    }),
+  );
+  await assertFails(
+    setDoc(doc(viewerDb, "calculations", "too-long-address"), {
+      ...entry,
+      sections: [{ ...entry.sections[0], address: "x".repeat(301) }],
     }),
   );
 });

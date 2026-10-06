@@ -4,7 +4,12 @@ import { snapshotCalculation } from "../src/utils/calculation.js";
 
 test("saved history preserves products, quantities, retail discount and dealer total", () => {
   const sections = [
-    { name: "Mục 1", items: [{ productId: "a", quantity: 2 }] },
+    {
+      name: "Mục 1",
+      address: "450 Nguyễn Lương Bằng",
+      paymentMethod: "Thu COD",
+      items: [{ productId: "a", quantity: 2 }],
+    },
   ];
   const products = [
     { id: "a", name: "Tỏi", unit: "kg", price: 250000, dealerPrice: 200000 },
@@ -13,6 +18,8 @@ test("saved history preserves products, quantities, retail discount and dealer t
   assert.equal(snapshot.total, 450000);
   assert.equal(snapshot.dealerTotal, 400000);
   assert.equal(snapshot.discountAmount, 50000);
+  assert.equal(snapshot.sections[0].address, "450 Nguyễn Lương Bằng");
+  assert.equal(snapshot.sections[0].paymentMethod, "Thu COD");
   assert.deepEqual(snapshot.sections[0].items[0], {
     name: "Tỏi",
     unit: "kg",
@@ -26,12 +33,39 @@ test("saved history preserves products, quantities, retail discount and dealer t
 
 test("a calculation accepts only one section", () => {
   const sections = [
-    { name: "Mục 1", items: [{ productId: "a", quantity: 1 }] },
-    { name: "Mục 2", items: [{ productId: "a", quantity: 1 }] },
+    {
+      name: "Mục 1",
+      paymentMethod: "Tiền mặt",
+      items: [{ productId: "a", quantity: 1 }],
+    },
+    {
+      name: "Mục 2",
+      paymentMethod: "Tiền mặt",
+      items: [{ productId: "a", quantity: 1 }],
+    },
   ];
   const products = [{ id: "a", name: "Tỏi", unit: "kg", price: 100000 }];
   assert.throws(
     () => snapshotCalculation(sections, products, "percent", 0),
     /chỉ dùng một mục/,
+  );
+});
+
+test("a payment method must be selected from the listed methods", () => {
+  const products = [{ id: "a", name: "Tỏi", unit: "kg", price: 100000 }];
+  const section = { name: "Mục 1", items: [{ productId: "a", quantity: 1 }] };
+  assert.throws(
+    () => snapshotCalculation([section], products, "percent", 0),
+    /phương thức thanh toán/,
+  );
+  assert.throws(
+    () =>
+      snapshotCalculation(
+        [{ ...section, paymentMethod: "Chuyển khoản khác" }],
+        products,
+        "percent",
+        0,
+      ),
+    /phương thức thanh toán/,
   );
 });

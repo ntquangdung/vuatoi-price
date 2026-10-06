@@ -56,6 +56,11 @@ service cloud.firestore {
       return d.keys().hasAll(['sections','lineCount','retailSubtotal','discountType','discountValue','discountAmount','total','dealerTotal','savedBy','createdAt'])
         && d.keys().hasOnly(['sections','lineCount','retailSubtotal','discountType','discountValue','discountAmount','total','dealerTotal','savedBy','createdAt'])
         && d.sections is list && d.sections.size() == 1
+        && d.sections[0] is map
+        && d.sections[0].keys().hasAll(['name','items'])
+        && d.sections[0].keys().hasOnly(['name','items','address','paymentMethod'])
+        && (!d.sections[0].keys().hasAny(['address']) || (d.sections[0].address is string && d.sections[0].address.size() <= 300))
+        && (!d.sections[0].keys().hasAny(['paymentMethod']) || d.sections[0].paymentMethod in ['Tiền mặt','TK A Định - LP','TK A Định - Viettin','Thu COD','Chị Vân','TK LP (Công Ty)'])
         && d.lineCount is int && d.lineCount > 0 && d.lineCount <= 100
         && d.retailSubtotal is number && d.retailSubtotal >= 0 && d.retailSubtotal <= 1000000000000000
         && d.discountType in ['percent','amount']

@@ -4,6 +4,7 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
   onSnapshot,
   getDocsFromServer,
   doc,
@@ -147,6 +148,24 @@ export const watchCalculations = (next, error) =>
     (snapshot) => next(snapshot.docs.map((d) => ({ ...d.data(), id: d.id }))),
     error,
   );
+
+export const getAllCalculations = async () => {
+  const entries = [];
+  let lastDocument = null;
+  while (true) {
+    const parts = [
+      collection(db, "calculations"),
+      orderBy("createdAt", "desc"),
+    ];
+    if (lastDocument) parts.push(startAfter(lastDocument));
+    const page = await getDocsFromServer(query(...parts, limit(300)));
+    entries.push(
+      ...page.docs.map((entry) => ({ ...entry.data(), id: entry.id })),
+    );
+    if (page.size < 300) return entries;
+    lastDocument = page.docs.at(-1);
+  }
+};
 
 export const watchHistorySettings = (next, error) =>
   onSnapshot(
